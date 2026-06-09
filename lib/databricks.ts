@@ -17,6 +17,15 @@
 import { DBSQLClient } from '@databricks/sql';
 import type { RecyclingRecord, CreateRecordInput, KPIData, PeriodData, MaterialBreakdown, SectorRankingItem, PeriodView } from '@/types';
 import { randomUUID } from 'crypto';
+import { MATERIALS, SECTORS } from '@/lib/constants';
+
+// Helper to build a safe IN clause after allowlist validation.
+// Values not present in the allowlist are silently dropped.
+function buildInClause(values: string[], column: string, allowlist: readonly string[]): string {
+  const safe = values.filter((v) => (allowlist as string[]).includes(v));
+  if (!safe.length) return '';
+  return `AND ${column} IN (${safe.map((v) => `'${v.replace(/'/g, "''")}'`).join(',')})`;
+}
 
 function getClient() {
   return new DBSQLClient();
@@ -82,14 +91,10 @@ export async function getRecords(filters: {
   limit?: number;
   offset?: number;
 }): Promise<RecyclingRecord[]> {
-  const sectorClause = filters.sectors?.length
-    ? `AND sector IN (${filters.sectors.map((s) => `'${s}'`).join(',')})`
-    : '';
-  const materialClause = filters.materials?.length
-    ? `AND material_type IN (${filters.materials.map((m) => `'${m}'`).join(',')})`
-    : '';
-  const limit = filters.limit ?? 50;
-  const offset = filters.offset ?? 0;
+  const sectorClause = buildInClause(filters.sectors ?? [], 'sector', SECTORS);
+  const materialClause = buildInClause(filters.materials ?? [], 'material_type', MATERIALS);
+  const safeLimit = Math.min(Math.max(1, Number.isFinite(Number(filters.limit)) ? Math.floor(Number(filters.limit)) : 50), 500);
+  const safeOffset = Math.max(0, Number.isFinite(Number(filters.offset)) ? Math.floor(Number(filters.offset)) : 0);
 
   return query<RecyclingRecord>(
     `SELECT id, material_type, CAST(weight_kg AS DOUBLE) AS weight_kg, sector,
@@ -100,14 +105,14 @@ export async function getRecords(filters: {
      ${sectorClause}
      ${materialClause}
      ORDER BY recorded_at DESC
-     LIMIT ${limit} OFFSET ${offset}`,
+     LIMIT ${safeLimit} OFFSET ${safeOffset}`,
     { dateFrom: filters.dateFrom, dateTo: filters.dateTo }
   );
 }
 
 export async function getKPIs(dateFrom: string, dateTo: string, sectors?: string[], materials?: string[]): Promise<KPIData> {
-  const sectorClause = sectors?.length ? `AND sector IN (${sectors.map((s) => `'${s}'`).join(',')})` : '';
-  const materialClause = materials?.length ? `AND material_type IN (${materials.map((m) => `'${m}'`).join(',')})` : '';
+  const sectorClause = buildInClause(sectors ?? [], 'sector', SECTORS);
+  const materialClause = buildInClause(materials ?? [], 'material_type', MATERIALS);
 
   const rows = await query<{ total_weight_kg: number; total_records: number; active_sectors: number }>(
     `SELECT
@@ -129,8 +134,8 @@ export async function getKPIs(dateFrom: string, dateTo: string, sectors?: string
 }
 
 export async function getByPeriod(dateFrom: string, dateTo: string, view: PeriodView, sectors?: string[], materials?: string[]): Promise<PeriodData[]> {
-  const sectorClause = sectors?.length ? `AND sector IN (${sectors.map((s) => `'${s}'`).join(',')})` : '';
-  const materialClause = materials?.length ? `AND material_type IN (${materials.map((m) => `'${m}'`).join(',')})` : '';
+  const sectorClause = buildInClause(sectors ?? [], 'sector', SECTORS);
+  const materialClause = buildInClause(materials ?? [], 'material_type', MATERIALS);
 
   const groupExpr =
     view === 'daily'
@@ -152,8 +157,8 @@ export async function getByPeriod(dateFrom: string, dateTo: string, view: Period
 }
 
 export async function getByMaterial(dateFrom: string, dateTo: string, sectors?: string[], materials?: string[]): Promise<MaterialBreakdown[]> {
-  const sectorClause = sectors?.length ? `AND sector IN (${sectors.map((s) => `'${s}'`).join(',')})` : '';
-  const materialClause = materials?.length ? `AND material_type IN (${materials.map((m) => `'${m}'`).join(',')})` : '';
+  const sectorClause = buildInClause(sectors ?? [], 'sector', SECTORS);
+  const materialClause = buildInClause(materials ?? [], 'material_type', MATERIALS);
 
   return query<MaterialBreakdown>(
     `SELECT material_type,
@@ -168,8 +173,8 @@ export async function getByMaterial(dateFrom: string, dateTo: string, sectors?: 
 }
 
 export async function getBySector(dateFrom: string, dateTo: string, sectors?: string[], materials?: string[]): Promise<SectorRankingItem[]> {
-  const sectorClause = sectors?.length ? `AND sector IN (${sectors.map((s) => `'${s}'`).join(',')})` : '';
-  const materialClause = materials?.length ? `AND material_type IN (${materials.map((m) => `'${m}'`).join(',')})` : '';
+  const sectorClause = buildInClause(sectors ?? [], 'sector', SECTORS);
+  const materialClause = buildInClause(materials ?? [], 'material_type', MATERIALS);
 
   return query<SectorRankingItem>(
     `SELECT sector,
