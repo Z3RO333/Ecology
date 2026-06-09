@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getRecords } from '@/lib/databricks';
 import { DEFAULT_DATE_FROM, DEFAULT_DATE_TO } from '@/lib/constants';
+import { formatRecordDateTime } from '@/lib/format';
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
   const headers = 'id,material_type,weight_kg,sector,responsible_name,notes,recorded_at\n';
   const rows = records
     .map((r) =>
-      [r.id, r.material_type, r.weight_kg, r.sector, r.responsible_name, r.notes ?? '', r.recorded_at]
+      [r.id, r.material_type, r.weight_kg, r.sector, r.responsible_name, r.notes ?? '', formatRecordDateTime(r.recorded_at)]
         .map(sanitizeCsvValue)
         .join(',')
     )

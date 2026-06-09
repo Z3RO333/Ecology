@@ -15,6 +15,7 @@
 import type { RecyclingRecord, CreateRecordInput, KPIData, PeriodData, MaterialBreakdown, SectorRankingItem, PeriodView } from '@/types';
 import { randomUUID } from 'crypto';
 import { MATERIALS, SECTORS } from '@/lib/constants';
+import { formatDateInAppTimeZone } from '@/lib/format';
 
 // Helper to build a safe IN clause after allowlist validation.
 // Values not present in the allowlist are silently dropped.
@@ -119,7 +120,7 @@ export async function insertRecord(input: CreateRecordInput): Promise<string> {
   const id = randomUUID();
   const now = new Date();
   const recorded_at = now.toISOString().replace('T', ' ').replace('Z', '');
-  const recorded_date = now.toISOString().split('T')[0];
+  const recorded_date = formatDateInAppTimeZone(now);
 
   await query(
     `INSERT INTO recycling_records

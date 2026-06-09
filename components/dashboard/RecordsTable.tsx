@@ -1,4 +1,5 @@
 import type { RecyclingRecord } from '@/types';
+import { formatRecordDateTime, formatWeight } from '@/lib/format';
 
 interface Props {
   records: RecyclingRecord[];
@@ -23,14 +24,14 @@ export function RecordsTable({ records }: Props) {
           {records.map((r) => (
             <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
               <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {new Date(r.recorded_at).toLocaleString('pt-BR')}
+                {formatRecordDateTime(r.recorded_at)}
               </td>
               <td className="px-4 py-3">
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                   {r.material_type}
                 </span>
               </td>
-              <td className="px-4 py-3 text-gray-900 font-medium">{Number(r.weight_kg).toFixed(3)}</td>
+              <td className="px-4 py-3 text-gray-900 font-medium">{formatWeight(Number(r.weight_kg))}</td>
               <td className="px-4 py-3 text-gray-600">{r.sector}</td>
               <td className="px-4 py-3 text-gray-600">{r.responsible_name}</td>
               <td className="px-4 py-3 text-gray-400 text-xs">{r.notes ?? '—'}</td>

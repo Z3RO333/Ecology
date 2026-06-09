@@ -1,4 +1,5 @@
 import type { Material, Sector } from '@/types';
+import { formatDateInAppTimeZone } from '@/lib/format';
 
 export const MATERIALS: Material[] = [
   'Papel',
@@ -33,11 +34,10 @@ export const MATERIAL_COLORS: Record<Material, string> = {
 };
 
 export const DEFAULT_DATE_FROM = (): string => {
-  const d = new Date();
-  d.setDate(1);
-  return d.toISOString().split('T')[0];
+  const today = formatDateInAppTimeZone();
+  return `${today.slice(0, 8)}01`;
 };
 
 export const DEFAULT_DATE_TO = (): string => {
-  return new Date().toISOString().split('T')[0];
+  return formatDateInAppTimeZone();
 };

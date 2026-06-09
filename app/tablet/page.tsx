@@ -15,6 +15,8 @@ export default function TabletPage() {
   const [material, setMaterial] = useState<Material | null>(null);
   const [weight, setWeight] = useState(0);
   const [sector, setSector] = useState<Sector | ''>('');
+  const [responsible, setResponsible] = useState('');
+  const [notes, setNotes] = useState('');
   const [showNotes, setShowNotes] = useState(false);
   const [activity, setActivity] = useState(0);
 
@@ -25,8 +27,10 @@ export default function TabletPage() {
     setMaterial(null);
     setWeight(0);
     setSector('');
+    setResponsible('');
+    setNotes('');
     setShowNotes(false);
-    formRef.current?.reset(); // also clears the uncontrolled name/notes fields
+    formRef.current?.reset();
   }, []);
 
   // Reset shortly after a successful save.
@@ -38,7 +42,13 @@ export default function TabletPage() {
 
   // Idle auto-reset: if someone starts a record and walks away, return the
   // kiosk to a clean state. The timer restarts on any interaction (activity).
-  const isDirty = material !== null || weight !== 0 || sector !== '' || showNotes;
+  const isDirty =
+    material !== null ||
+    weight !== 0 ||
+    sector !== '' ||
+    responsible !== '' ||
+    notes !== '' ||
+    showNotes;
   useEffect(() => {
     if (!isDirty || isPending || state.success) return;
     const timer = setTimeout(resetForm, IDLE_RESET_MS);
@@ -68,7 +78,6 @@ export default function TabletPage() {
         className="max-w-2xl mx-auto px-5 py-8 space-y-7"
       >
         <input type="hidden" name="material_type" value={material ?? ''} />
-        <input type="hidden" name="sector" value={sector} />
 
         <MaterialSelector value={material} onChange={setMaterial} />
         <SectorDropdown value={sector} onChange={setSector} />
@@ -80,6 +89,8 @@ export default function TabletPage() {
           <input
             name="responsible_name"
             type="text"
+            value={responsible}
+            onChange={(event) => setResponsible(event.target.value)}
             placeholder="Nome do colaborador..."
             className="w-full bg-white border-2 border-gray-200 rounded-2xl p-5 text-gray-700 focus:border-green-500 outline-none text-xl"
           />
@@ -98,6 +109,8 @@ export default function TabletPage() {
             <textarea
               name="notes"
               rows={3}
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
               placeholder="Observações..."
               className="mt-2 w-full bg-white border-2 border-gray-200 rounded-2xl p-4 text-gray-700 focus:border-green-500 outline-none text-lg resize-none"
             />
