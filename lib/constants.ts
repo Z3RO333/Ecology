@@ -7,6 +7,7 @@ export const MATERIALS: Material[] = [
   'Vidro',
   'Orgânico',
   'Eletrônico',
+  'Lixo Comum',
   'Outro',
 ];
 
@@ -27,6 +28,7 @@ export const MATERIAL_COLORS: Record<Material, string> = {
   Vidro: '#c4b5fd',
   Orgânico: '#fde68a',
   Eletrônico: '#fca5a5',
+  'Lixo Comum': '#9ca3af',
   Outro: '#d1d5db',
 };
 

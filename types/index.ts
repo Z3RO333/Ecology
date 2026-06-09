@@ -5,6 +5,7 @@ export type Material =
   | 'Vidro'
   | 'Orgânico'
   | 'Eletrônico'
+  | 'Lixo Comum'
   | 'Outro';
 
 export type Sector =
