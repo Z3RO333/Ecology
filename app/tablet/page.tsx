@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useActionState, useEffect } from 'react';
+import { useState, useActionState, useEffect, useRef, useCallback } from 'react';
 import { createRecord } from '@/actions/records';
 import { MaterialSelector } from '@/components/tablet/MaterialSelector';
 import { WeightInput } from '@/components/tablet/WeightInput';
@@ -8,26 +8,44 @@ import { SectorDropdown } from '@/components/tablet/SectorDropdown';
 import type { Material, Sector } from '@/types';
 
 const INITIAL_STATE = { success: false, error: undefined };
+// Clear a half-filled form on its own after this long without interaction.
+const IDLE_RESET_MS = 90_000;
 
 export default function TabletPage() {
   const [material, setMaterial] = useState<Material | null>(null);
   const [weight, setWeight] = useState(0);
   const [sector, setSector] = useState<Sector | ''>('');
   const [showNotes, setShowNotes] = useState(false);
+  const [activity, setActivity] = useState(0);
 
+  const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, isPending] = useActionState(createRecord, INITIAL_STATE);
 
+  const resetForm = useCallback(() => {
+    setMaterial(null);
+    setWeight(0);
+    setSector('');
+    setShowNotes(false);
+    formRef.current?.reset(); // also clears the uncontrolled name/notes fields
+  }, []);
+
+  // Reset shortly after a successful save.
   useEffect(() => {
-    if (state.success) {
-      const timer = setTimeout(() => {
-        setMaterial(null);
-        setWeight(0);
-        setSector('');
-        setShowNotes(false);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [state.success]);
+    if (!state.success) return;
+    const timer = setTimeout(resetForm, 2000);
+    return () => clearTimeout(timer);
+  }, [state.success, resetForm]);
+
+  // Idle auto-reset: if someone starts a record and walks away, return the
+  // kiosk to a clean state. The timer restarts on any interaction (activity).
+  const isDirty = material !== null || weight !== 0 || sector !== '' || showNotes;
+  useEffect(() => {
+    if (!isDirty || isPending || state.success) return;
+    const timer = setTimeout(resetForm, IDLE_RESET_MS);
+    return () => clearTimeout(timer);
+  }, [isDirty, isPending, state.success, activity, resetForm]);
+
+  const bumpActivity = useCallback(() => setActivity((a) => a + 1), []);
 
   const now = new Date();
   const dateStr = now.toLocaleDateString('pt-BR', {
@@ -37,12 +55,18 @@ export default function TabletPage() {
 
   return (
     <div className="min-h-screen bg-green-50">
-      <div className="bg-green-600 text-white px-6 py-4 text-center">
-        <h1 className="text-xl font-bold">♻ Registro de Reciclagem</h1>
-        <p className="text-green-100 text-sm mt-1 capitalize">{dateStr} · {timeStr}</p>
+      <div className="bg-green-600 text-white px-6 py-6 text-center">
+        <h1 className="text-3xl font-bold">♻ Registro de Reciclagem</h1>
+        <p className="text-green-100 text-base mt-1 capitalize">{dateStr} · {timeStr}</p>
       </div>
 
-      <form action={formAction} className="max-w-lg mx-auto px-4 py-6 space-y-6">
+      <form
+        ref={formRef}
+        action={formAction}
+        onPointerDown={bumpActivity}
+        onKeyDown={bumpActivity}
+        className="max-w-2xl mx-auto px-5 py-8 space-y-7"
+      >
         <input type="hidden" name="material_type" value={material ?? ''} />
         <input type="hidden" name="sector" value={sector} />
 
@@ -52,12 +76,12 @@ export default function TabletPage() {
 
         {/* Responsável */}
         <div>
-          <p className="text-sm font-bold text-green-800 mb-2">4. Responsável *</p>
+          <p className="text-lg font-bold text-green-800 mb-3">4. Responsável *</p>
           <input
             name="responsible_name"
             type="text"
             placeholder="Nome do colaborador..."
-            className="w-full bg-white border-2 border-gray-200 rounded-xl p-4 text-gray-700 focus:border-green-500 outline-none text-base"
+            className="w-full bg-white border-2 border-gray-200 rounded-2xl p-5 text-gray-700 focus:border-green-500 outline-none text-xl"
           />
         </div>
 
@@ -66,7 +90,7 @@ export default function TabletPage() {
           <button
             type="button"
             onClick={() => setShowNotes(!showNotes)}
-            className="text-sm text-green-700 underline"
+            className="text-base text-green-700 underline"
           >
             {showNotes ? '▲ Ocultar observações' : '▼ Adicionar observação (opcional)'}
           </button>
@@ -75,19 +99,19 @@ export default function TabletPage() {
               name="notes"
               rows={3}
               placeholder="Observações..."
-              className="mt-2 w-full bg-white border-2 border-gray-200 rounded-xl p-3 text-gray-700 focus:border-green-500 outline-none text-sm resize-none"
+              className="mt-2 w-full bg-white border-2 border-gray-200 rounded-2xl p-4 text-gray-700 focus:border-green-500 outline-none text-lg resize-none"
             />
           )}
         </div>
 
         {/* Error / Success */}
         {state.error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-sm">
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-lg">
             {state.error}
           </div>
         )}
         {state.success && (
-          <div className="bg-green-100 border border-green-300 text-green-800 rounded-xl p-4 text-center font-semibold">
+          <div className="bg-green-100 border border-green-300 text-green-800 rounded-2xl p-5 text-center text-xl font-semibold">
             ✓ Registro salvo com sucesso!
           </div>
         )}
@@ -95,7 +119,7 @@ export default function TabletPage() {
         <button
           type="submit"
           disabled={isPending || state.success}
-          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-bold py-5 rounded-xl text-base transition-colors"
+          className="w-full bg-green-600 active:bg-green-700 disabled:bg-gray-300 text-white font-bold py-7 rounded-2xl text-2xl transition-colors shadow-md"
         >
           {isPending ? 'Salvando...' : state.success ? '✓ Salvo!' : '✓ Confirmar Registro'}
         </button>

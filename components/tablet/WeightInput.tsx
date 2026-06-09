@@ -12,27 +12,28 @@ export function WeightInput({ value, onChange }: Props) {
 
   return (
     <div>
-      <p className="text-sm font-bold text-green-800 mb-2">3. Peso (kg) *</p>
-      <div className="bg-white border-2 border-gray-200 rounded-xl p-4 text-center">
+      <p className="text-lg font-bold text-green-800 mb-3">3. Peso (kg) *</p>
+      <div className="bg-white border-2 border-gray-200 rounded-2xl p-5 text-center">
         <input
           type="number"
           name="weight_kg"
+          aria-label="Peso em quilogramas"
           value={value === 0 ? '' : value}
           onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
           placeholder="0,000"
           step="0.001"
           min="0"
-          className="w-full text-3xl font-bold text-center text-gray-900 outline-none"
+          className="w-full text-6xl font-bold text-center text-gray-900 outline-none"
         />
-        <p className="text-gray-400 text-xs mt-1">{display} kg</p>
+        <p className="text-gray-400 text-base mt-1">{display} kg</p>
       </div>
-      <div className="grid grid-cols-4 gap-2 mt-2">
+      <div className="grid grid-cols-4 gap-3 mt-3">
         {QUICK_ADD.map((inc) => (
           <button
             key={inc}
             type="button"
             onClick={() => onChange(Math.round((value + inc) * 1000) / 1000)}
-            className="bg-gray-100 hover:bg-green-100 text-gray-700 text-sm py-2 rounded-lg transition-colors"
+            className="bg-gray-100 active:bg-green-100 text-gray-700 text-xl font-semibold py-5 rounded-xl transition-colors"
           >
             +{inc.toString().replace('.', ',')}
           </button>
