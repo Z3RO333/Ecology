@@ -28,9 +28,11 @@ export const viewport: Viewport = {
 
 export default function TabletLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    // Kiosk wrapper: no text selection, no tap highlight, no pull-to-refresh
+    // bounce — keeps the surface feeling like a native operational app.
+    <div className="select-none [-webkit-touch-callout:none] [-webkit-tap-highlight-color:transparent] [overscroll-behavior:none] [touch-action:manipulation]">
       <PWARegister />
       {children}
-    </>
+    </div>
   );
 }
