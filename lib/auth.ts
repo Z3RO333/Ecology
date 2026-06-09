@@ -2,6 +2,14 @@ import NextAuth from 'next-auth';
 import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
 
 const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN?.toLowerCase();
+const EXPECTED_TENANT_ID = process.env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID;
+
+// Shape of the relevant claims in the Entra ID id_token profile.
+interface EntraProfile {
+  tid?: string;
+  email?: string;
+  preferred_username?: string;
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -15,10 +23,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: '/auth/signin',
   },
   callbacks: {
-    // Restrict sign-in to a single email domain when ALLOWED_EMAIL_DOMAIN is set.
+    // Restrict sign-in to a single trusted tenant + email domain.
     signIn({ profile }) {
       if (!ALLOWED_DOMAIN) return true;
-      const email = (profile?.email ?? (profile as { preferred_username?: string })?.preferred_username ?? '').toLowerCase();
+
+      const p = profile as EntraProfile | undefined;
+
+      // Reject any token not issued by the expected tenant. This pins trust to
+      // the Bemol directory so the email claim below can be relied upon.
+      if (EXPECTED_TENANT_ID && p?.tid !== EXPECTED_TENANT_ID) return false;
+
+      // Only trust the verified `email` claim — never `preferred_username`,
+      // which is user-controllable and not guaranteed to be a verified address.
+      const email = p?.email?.toLowerCase();
+      if (!email) return false;
+
       return email.endsWith(`@${ALLOWED_DOMAIN}`);
     },
   },
