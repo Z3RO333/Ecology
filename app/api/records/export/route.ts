@@ -15,11 +15,18 @@ export async function GET(req: NextRequest) {
 
   const records = await getRecords({ dateFrom, dateTo, sectors, materials, limit: 10000, offset: 0 });
 
+  const sanitizeCsvValue = (v: unknown): string => {
+    const s = String(v ?? '').replace(/"/g, '""');
+    // Prevent CSV/formula injection: prefix values starting with =, +, -, @ with a single quote
+    if (/^[=+\-@]/.test(s)) return `"'${s}"`;
+    return `"${s}"`;
+  };
+
   const headers = 'id,material_type,weight_kg,sector,responsible_name,notes,recorded_at\n';
   const rows = records
     .map((r) =>
       [r.id, r.material_type, r.weight_kg, r.sector, r.responsible_name, r.notes ?? '', r.recorded_at]
-        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .map(sanitizeCsvValue)
         .join(',')
     )
     .join('\n');
