@@ -10,8 +10,10 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Registro de reciclagem por setor — modo quiosque',
     start_url: '/tablet',
     scope: '/tablet',
-    display: 'standalone',
-    orientation: 'portrait',
+    // fullscreen hides the status bar too on Android; standalone is the
+    // fallback for browsers that don't support fullscreen (e.g. iOS Safari).
+    display: 'fullscreen',
+    display_override: ['fullscreen', 'standalone'],
     background_color: '#f0fdf4',
     theme_color: '#16a34a',
     icons: [
