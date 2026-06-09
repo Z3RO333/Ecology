@@ -20,7 +20,7 @@ export function MaterialPieChart({ data }: Props) {
               />
             ))}
           </Pie>
-          <Tooltip formatter={(v: number) => [`${v.toFixed(2)} kg`]} />
+          <Tooltip formatter={(v) => [typeof v === 'number' ? `${v.toFixed(2)} kg` : `${String(v ?? '')} kg`]} />
           <Legend />
         </PieChart>
       </ResponsiveContainer>

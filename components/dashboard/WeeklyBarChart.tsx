@@ -13,7 +13,7 @@ export function WeeklyBarChart({ data }: Props) {
         <BarChart data={data}>
           <XAxis dataKey="period" tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip formatter={(v: number) => [`${v.toFixed(2)} kg`, 'Peso']} />
+          <Tooltip formatter={(v) => [typeof v === 'number' ? `${v.toFixed(2)} kg` : `${String(v ?? '')} kg`, 'Peso']} />
           <Bar dataKey="total_weight_kg" fill="#16a34a" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
