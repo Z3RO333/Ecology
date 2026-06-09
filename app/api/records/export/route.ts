@@ -31,7 +31,10 @@ export async function GET(req: NextRequest) {
     )
     .join('\n');
 
-  const filename = `ecotracker_${dateFrom}_${dateTo}.csv`;
+  const isoDate = /^\d{4}-\d{2}-\d{2}$/;
+  const safeFrom = isoDate.test(dateFrom) ? dateFrom : 'unknown';
+  const safeTo = isoDate.test(dateTo) ? dateTo : 'unknown';
+  const filename = `ecotracker_${safeFrom}_${safeTo}.csv`;
 
   return new NextResponse(headers + rows, {
     headers: {
