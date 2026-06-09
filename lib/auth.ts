@@ -29,9 +29,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       const p = profile as EntraProfile | undefined;
 
-      // Reject any token not issued by the expected tenant. This pins trust to
-      // the Bemol directory so the email claim below can be relied upon.
-      if (EXPECTED_TENANT_ID && p?.tid !== EXPECTED_TENANT_ID) return false;
+      // Fail closed: if domain restriction is on, the expected tenant MUST be
+      // configured and MUST match. A missing env var denies access, never grants.
+      if (!EXPECTED_TENANT_ID || p?.tid !== EXPECTED_TENANT_ID) return false;
 
       // Only trust the verified `email` claim — never `preferred_username`,
       // which is user-controllable and not guaranteed to be a verified address.
