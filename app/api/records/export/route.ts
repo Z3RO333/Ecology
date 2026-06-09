@@ -1,0 +1,35 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { getRecords } from '@/lib/databricks';
+import { DEFAULT_DATE_FROM, DEFAULT_DATE_TO } from '@/lib/constants';
+
+export async function GET(req: NextRequest) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { searchParams } = req.nextUrl;
+  const dateFrom = searchParams.get('dateFrom') ?? DEFAULT_DATE_FROM();
+  const dateTo = searchParams.get('dateTo') ?? DEFAULT_DATE_TO();
+  const sectors = searchParams.getAll('sector');
+  const materials = searchParams.getAll('material');
+
+  const records = await getRecords({ dateFrom, dateTo, sectors, materials, limit: 10000, offset: 0 });
+
+  const headers = 'id,material_type,weight_kg,sector,responsible_name,notes,recorded_at\n';
+  const rows = records
+    .map((r) =>
+      [r.id, r.material_type, r.weight_kg, r.sector, r.responsible_name, r.notes ?? '', r.recorded_at]
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(',')
+    )
+    .join('\n');
+
+  const filename = `ecotracker_${dateFrom}_${dateTo}.csv`;
+
+  return new NextResponse(headers + rows, {
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    },
+  });
+}
