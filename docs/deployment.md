@@ -5,31 +5,43 @@
 - Azure CLI installed: `az login`
 - Resource group already created or use an existing one
 
+> **Status (provisioned 2026-06-09):** The resources below were already created
+> in resource group `RGDIROPERACIONAL` (the only RG the deploy account has
+> write access to). App URL: `https://ecotracker-app.azurewebsites.net`.
+
 ## 1. Create App Service Plan + Web App
 
 ```bash
 # Variables — adjust as needed
-RG="rg-ecotracker"
+RG="RGDIROPERACIONAL"   # existing RG; the deploy account is Owner here
 PLAN="plan-ecotracker"
 APP="ecotracker-app"
 LOCATION="brazilsouth"
 
-# Create resource group
-az group create --name $RG --location $LOCATION
+# NOTE: creating a new resource group requires subscription-level write access.
+# If you have it, run: az group create --name $RG --location $LOCATION
+# Otherwise deploy into an existing RG you own (as done here).
 
 # Create App Service Plan (B1, Linux)
 az appservice plan create \
   --name $PLAN \
   --resource-group $RG \
   --sku B1 \
-  --is-linux
+  --is-linux \
+  --location $LOCATION
 
-# Create Web App with Node 20 LTS
+# Create Web App with Node 22 LTS (Node 20 is no longer offered on App Service)
 az webapp create \
   --name $APP \
   --resource-group $RG \
   --plan $PLAN \
-  --runtime "NODE:20-lts"
+  --runtime "NODE:22-lts"
+
+# Enable Oryx build on deploy + pin Node major
+az webapp config appsettings set \
+  --name $APP \
+  --resource-group $RG \
+  --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true WEBSITE_NODE_DEFAULT_VERSION=~22
 ```
 
 ## 2. Configure Environment Variables
