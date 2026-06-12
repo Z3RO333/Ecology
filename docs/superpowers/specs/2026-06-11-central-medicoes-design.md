@@ -29,7 +29,7 @@ extrair + consolidar**.
 |---|---|
 | Framework | Next.js 15 (App Router, TS) — mesmo app EcoTracker |
 | Login interno | Microsoft Entra ID (já existente), papéis admin/manager/operational |
-| Login fornecedor | Identidade federada (Entra External ID) validada contra `supplier_allowed_emails` — conforme o schema já existente (`app_users.external_subject`) |
+| Login fornecedor | E-mail + **senha** (NextAuth Credentials, bcrypt). `app_users` ganha `password_hash`; `external_subject` passa a ser opcional para suppliers. Allowlist via `supplier_allowed_emails` |
 | Banco transacional | **Azure Database for PostgreSQL** — schema `docs/sql/001_platform_core.sql` já versionado (`suppliers`, `app_users`, `document_submissions`, `submission_files`, `submission_events`, `audit_log`), aplicado por `scripts/migrate-platform.mjs` |
 | Arquivos | Azure Blob Storage (container privado), download por rota autorizada |
 | Dados extraídos | **Novas tabelas Postgres** (`invoice_extractions`, `invoice_line_items`) — ver §7 |
@@ -55,26 +55,19 @@ Regra de ouro: proteção de rota na UI **não basta**. Toda Server Action, Rout
 Handler, função de acesso a dados e download de arquivo revalida **autenticação +
 papel + posse do recurso**.
 
-## 4. Autenticação do fornecedor
-
-Segue o modelo do schema já existente (`app_users.external_subject` + `suppliers` +
-`supplier_allowed_emails`): **identidade federada**, sem senha armazenada na aplicação.
+## 4. Autenticação do fornecedor (e-mail + senha)
 
 - O admin cadastra o fornecedor (`suppliers`) e seus e-mails autorizados
   (`supplier_allowed_emails`).
-- **Login**: fornecedor autentica via **Microsoft Entra External ID** (provider
-  NextAuth dedicado a externos). Na criação da sessão, o e-mail normalizado é conferido
-  contra `supplier_allowed_emails`; se não estiver lá, o acesso é negado mesmo que a
-  identidade externa tenha autenticado.
-- No 1º login válido, cria-se o `app_users` (role `supplier`, `external_subject` do
-  provedor, `supplier_id` correspondente). Sessão httpOnly escopada em `/fornecedor`.
-- A aplicação **não guarda senha de fornecedor** (o provedor externo prova a posse do
-  e-mail).
-
-> Premissa a confirmar: o login do fornecedor usa **Entra External ID** (decorre do
-> schema). É o pré-requisito mais pesado (configurar o tenant External ID). Caso queira
-> evitá-lo no MVP, a alternativa é adicionar `password_hash` em `app_users` e usar
-> Credentials — mas isso desvia do schema atual.
+- **1º acesso**: e-mail está na allowlist **e** ainda não há `app_users` com senha →
+  fornecedor define senha (com confirmação) → cria `app_users` (role `supplier`,
+  `supplier_id` do e-mail, `password_hash` bcrypt).
+- **Login**: e-mail + senha → verifica hash → sessão **cookie httpOnly escopada em
+  `/fornecedor`** via NextAuth Credentials provider (separado do fluxo Entra interno).
+- Senha **nunca** em texto puro; só hash (bcrypt, custo ≥ 12). Admin pode limpar a senha
+  para forçar novo 1º acesso. Sem reset por e-mail no MVP.
+- Migração `002` adiciona `password_hash TEXT` em `app_users` e torna `external_subject`
+  anulável (suppliers por senha não têm subject externo).
 
 ## 5. Upload e armazenamento
 
@@ -181,13 +174,13 @@ Nova seção **"Medições"** no `/dashboard` (somente admin/manager):
 
 ## 10. Pré-requisitos (fornecidos pelo usuário / provisionados)
 
-- **Azure Database for PostgreSQL** provisionado no RG `RGDIROPERACIONAL`;
-  `DATABASE_URL` nas App Settings; rodar `scripts/migrate-platform.mjs` (001) e a nova
-  migração 002.
-- **Entra External ID** para login de fornecedor (tenant/app registration) — ou decisão
-  de usar a alternativa por senha (ver §4).
-- `OPENAI_API_KEY` + modelo (`gpt-4o-mini` padrão).
-- API de OCR (provider + credenciais) — usada só como fallback. **A definir.**
+- **Azure Database for PostgreSQL** já existe: `ecotracker-pg.postgres.database.azure.com`.
+  Definir `DATABASE_URL` (.env + App Settings); rodar `scripts/migrate-platform.mjs`
+  (001) e a nova migração `002_invoice_extraction.sql`.
+- Login de fornecedor por **senha** (ver §4) — sem dependência de Entra External ID.
+- `OPENAI_API_KEY` (usuário já tem) + modelo `gpt-4o-mini`.
+- **Azure Document Intelligence** (OCR de fallback): `AZURE_DOCINTEL_ENDPOINT` +
+  `AZURE_DOCINTEL_KEY`.
 - Azure Storage Account + container privado `medicoes` no RG `RGDIROPERACIONAL`
   (`AZURE_STORAGE_CONNECTION_STRING` nas App Settings).
 
