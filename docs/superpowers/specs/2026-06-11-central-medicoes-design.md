@@ -28,15 +28,18 @@ extrair + consolidar**.
 | Camada | Decisão (MVP) |
 |---|---|
 | Framework | Next.js 15 (App Router, TS) — mesmo app EcoTracker |
-| Login fornecedor | Allowlist de e-mails + **senha no 1º acesso** (NextAuth Credentials, hash bcrypt). Sem envio de e-mail. |
-| Login interno | Microsoft Entra ID (já existente), papéis admin/manager |
+| Login interno | Microsoft Entra ID (já existente), papéis admin/manager/operational |
+| Login fornecedor | Identidade federada (Entra External ID) validada contra `supplier_allowed_emails` — conforme o schema já existente (`app_users.external_subject`) |
+| Banco transacional | **Azure Database for PostgreSQL** — schema `docs/sql/001_platform_core.sql` já versionado (`suppliers`, `app_users`, `document_submissions`, `submission_files`, `submission_events`, `audit_log`), aplicado por `scripts/migrate-platform.mjs` |
 | Arquivos | Azure Blob Storage (container privado), download por rota autorizada |
-| Dados extraídos | Tabelas no Databricks (reusa a conexão REST existente) |
+| Dados extraídos | **Novas tabelas Postgres** (`invoice_extractions`, `invoice_line_items`) — ver §7 |
 | Extração | Texto embutido do PDF → ChatGPT (structured outputs). OCR só de fallback para PDFs escaneados |
-| Dashboard | Nova seção "Medições" no painel atual (Recharts) |
+| Dashboard analítico | Recharts; agregados de reciclagem seguem no Databricks, consolidação das Medições lê do Postgres |
 
-**Abordagem escolhida:** enxuta (reaproveita Databricks + dashboard; mínimo de
-serviços novos — só o Blob). Migração para Postgres/Entra External ID fica para a fase 2.
+**Fundação escolhida:** a plataforma PostgreSQL **já scaffoldada** no repositório
+(`pg`, SQL de migração, controle de acesso por papéis). Este MVP **constrói em cima
+dela** a camada nova de extração com IA e a consolidação no dashboard. O Databricks
+continua sendo o store analítico da reciclagem; a Medição é transacional → Postgres.
 
 ## 3. Áreas e papéis
 
@@ -54,14 +57,24 @@ papel + posse do recurso**.
 
 ## 4. Autenticação do fornecedor
 
-- **Allowlist** `supplier_allowed_emails` (e-mails autorizados), gerenciada pelo admin.
-  Bootstrap por env (`APP_SUPPLIER_EMAILS`) até a tabela existir; depois via tabela.
-- **1º acesso**: e-mail está na allowlist **e** ainda não tem conta → fornecedor define
-  senha (com confirmação) → cria registro `fornecedor` com `password_hash` (bcrypt).
-- **Login**: e-mail + senha → verifica hash → sessão **cookie httpOnly escopada em
-  `/fornecedor`** via NextAuth Credentials provider (separado do fluxo Entra interno).
-- Senha **nunca** em texto puro; só hash (bcrypt, custo ≥ 12). Sem reset por e-mail no
-  MVP (admin pode limpar a senha para forçar novo 1º acesso).
+Segue o modelo do schema já existente (`app_users.external_subject` + `suppliers` +
+`supplier_allowed_emails`): **identidade federada**, sem senha armazenada na aplicação.
+
+- O admin cadastra o fornecedor (`suppliers`) e seus e-mails autorizados
+  (`supplier_allowed_emails`).
+- **Login**: fornecedor autentica via **Microsoft Entra External ID** (provider
+  NextAuth dedicado a externos). Na criação da sessão, o e-mail normalizado é conferido
+  contra `supplier_allowed_emails`; se não estiver lá, o acesso é negado mesmo que a
+  identidade externa tenha autenticado.
+- No 1º login válido, cria-se o `app_users` (role `supplier`, `external_subject` do
+  provedor, `supplier_id` correspondente). Sessão httpOnly escopada em `/fornecedor`.
+- A aplicação **não guarda senha de fornecedor** (o provedor externo prova a posse do
+  e-mail).
+
+> Premissa a confirmar: o login do fornecedor usa **Entra External ID** (decorre do
+> schema). É o pré-requisito mais pesado (configurar o tenant External ID). Caso queira
+> evitá-lo no MVP, a alternativa é adicionar `password_hash` em `app_users` e usar
+> Credentials — mas isso desvia do schema atual.
 
 ## 5. Upload e armazenamento
 
@@ -100,23 +113,48 @@ Disparado no envio da Medição; processa cada fatura de forma assíncrona.
 Modelo: `gpt-4o-mini` por padrão (custo baixo, suficiente para texto já limpo),
 `gpt-4o` como opção para faturas difíceis. Temperatura 0.
 
-## 7. Modelo de dados (Databricks, schema `ecologyc`)
+## 7. Modelo de dados (PostgreSQL)
 
-- **`fornecedor`**: `id`, `email` (único), `nome`, `password_hash`, `status`
-  (`ativo`/`bloqueado`), `created_at`.
-- **`supplier_allowed_emails`**: `email` (único), `added_by`, `added_at` (ou derivada de
-  env no bootstrap).
-- **`medicao`**: `id`, `fornecedor_id`, `periodo` (`MM/AAAA`), `responsavel`, `status`
-  (`processando`/`concluida`/`erro_parcial`), `total_extraido`, `created_at`.
-- **`fatura`**: `id`, `medicao_id`, `blob_key`, `filename`, `sha256`, `numero`,
-  `fornecedor_cnpj`, `cliente_loja`, `total`, `vencimento`, `situacao`,
-  `forma_pagamento`, `extract_status`, `extract_error`, `extracted_at`, `raw_json`.
-- **`fatura_item`**: `id`, `fatura_id`, `descricao`, `num_controle`, `volume_m3`,
-  `num_cacamba`, `entregue_em`, `coletado_em`, `qtd`, `valor_unitario`, `valor_total`.
+**Reusa o schema existente** (`docs/sql/001_platform_core.sql`):
+- `suppliers`, `app_users`, `supplier_allowed_emails` — identidade e allowlist.
+- `document_submissions` — uma submissão = uma **Medição** (`document_type='medicao'`,
+  `competence_start/end` = período, `business_unit` = loja quando aplicável, `amount` =
+  total). O `submission_status` cobre o workflow (no MVP usamos `submitted` →
+  `approved`; transições completas ficam para a fase 2).
+- `submission_files` — uma linha por PDF (blob_key, sha256, mime, size). Cada arquivo é
+  uma **fatura**.
+- `submission_events`, `audit_log` — trilha de auditoria.
 
-Observação: Databricks é analítico (sem constraints transacionais). Para o volume do
-MVP (poucos fornecedores, dezenas de faturas/mês) é aceitável. Unicidade de e-mail e
-posse são garantidas em código. Migração para Postgres prevista na fase 2.
+**Tabelas novas** (migração `docs/sql/002_invoice_extraction.sql`), para a extração:
+
+```sql
+CREATE TABLE IF NOT EXISTS invoice_extractions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  file_id UUID NOT NULL UNIQUE REFERENCES submission_files(id) ON DELETE CASCADE,
+  submission_id UUID NOT NULL REFERENCES document_submissions(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'pending',        -- pending | extracted | error
+  error TEXT,
+  source TEXT,                                    -- 'pdf-text' | 'ocr'
+  numero TEXT, fornecedor_nome TEXT, fornecedor_cnpj VARCHAR(14),
+  cliente_loja TEXT, cliente_cnpj VARCHAR(14),
+  total NUMERIC(14,2), vencimento DATE, situacao TEXT, forma_pagamento TEXT,
+  raw_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  extracted_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS invoice_line_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  extraction_id UUID NOT NULL REFERENCES invoice_extractions(id) ON DELETE CASCADE,
+  descricao TEXT, num_controle TEXT, volume_m3 NUMERIC(10,3), num_cacamba TEXT,
+  entregue_em DATE, coletado_em DATE, qtd NUMERIC(12,3),
+  valor_unitario NUMERIC(14,2), valor_total NUMERIC(14,2)
+);
+CREATE INDEX IF NOT EXISTS invoice_line_items_extraction_idx
+  ON invoice_line_items (extraction_id);
+```
+
+Acesso a dados num módulo `lib/db.ts` (pool `pg`) com funções tipadas; toda query de
+fornecedor inclui o `supplier_id` da sessão.
 
 ## 8. Dashboard — consolidação
 
@@ -143,11 +181,15 @@ Nova seção **"Medições"** no `/dashboard` (somente admin/manager):
 
 ## 10. Pré-requisitos (fornecidos pelo usuário / provisionados)
 
+- **Azure Database for PostgreSQL** provisionado no RG `RGDIROPERACIONAL`;
+  `DATABASE_URL` nas App Settings; rodar `scripts/migrate-platform.mjs` (001) e a nova
+  migração 002.
+- **Entra External ID** para login de fornecedor (tenant/app registration) — ou decisão
+  de usar a alternativa por senha (ver §4).
 - `OPENAI_API_KEY` + modelo (`gpt-4o-mini` padrão).
 - API de OCR (provider + credenciais) — usada só como fallback. **A definir.**
 - Azure Storage Account + container privado `medicoes` no RG `RGDIROPERACIONAL`
   (`AZURE_STORAGE_CONNECTION_STRING` nas App Settings).
-- Tabelas criadas no Databricks (`manutencao.ecologyc.*`).
 
 ## 11. Fora do escopo (fase 2)
 
@@ -158,7 +200,7 @@ Nova seção **"Medições"** no `/dashboard` (somente admin/manager):
 - Antivírus / quarentena de upload.
 - Exportação para ERP/financeiro.
 - Múltiplos tipos de documento configuráveis.
-- Migração dos dados transacionais para Azure PostgreSQL.
+- Workflow completo de transições de status (além de `submitted`/`approved`).
 
 ## 12. Critérios de aceite (MVP)
 
