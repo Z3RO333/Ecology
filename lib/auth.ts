@@ -74,19 +74,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) session.user.supplierId = token.supplierId as string | undefined;
       return session;
     },
-    authorized({ auth: session, request }) {
-      const { pathname } = request.nextUrl;
-      const role = session?.user?.role;
-      if (pathname.startsWith('/fornecedor')) {
-        if (pathname.startsWith('/fornecedor/login') || pathname.startsWith('/fornecedor/primeiro-acesso')) {
-          return true;
-        }
-        return role === 'supplier';
-      }
-      if (pathname.startsWith('/dashboard')) {
-        return role === 'admin' || role === 'manager' || role === 'operational';
-      }
-      return true;
-    },
   },
 });
