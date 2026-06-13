@@ -8,6 +8,9 @@
 > **Status (provisioned 2026-06-09):** The resources below were already created
 > in resource group `RGDIROPERACIONAL` (the only RG the deploy account has
 > write access to). App URL: `https://ecotracker-app.azurewebsites.net`.
+>
+> PostgreSQL status: `ecotracker-pg` and database `ecotracker` were provisioned
+> in Brazil South. `DATABASE_URL` is configured directly in the App Service.
 
 ## 1. Create App Service Plan + Web App
 
@@ -55,6 +58,11 @@ az webapp config appsettings set \
     AUTH_MICROSOFT_ENTRA_ID_ID="<client_id from Azure AD app>" \
     AUTH_MICROSOFT_ENTRA_ID_SECRET="<client_secret>" \
     AUTH_MICROSOFT_ENTRA_ID_ISSUER="https://login.microsoftonline.com/<tenant_id>/v2.0" \
+    APP_ADMIN_EMAILS="admin@empresa.com" \
+    APP_MANAGER_EMAILS="gestor@empresa.com" \
+    APP_OPERATIONAL_EMAILS="operador@empresa.com" \
+    TABLET_ACCESS_KEY="<chave longa exclusiva do tablet>" \
+    DATABASE_URL="<configured directly from the PostgreSQL resource>" \
     DATABRICKS_SERVER_HOSTNAME="<workspace>.azuredatabricks.net" \
     DATABRICKS_HTTP_PATH="/sql/1.0/warehouses/<warehouse_id>" \
     DATABRICKS_TOKEN="<personal_access_token>" \
@@ -62,6 +70,16 @@ az webapp config appsettings set \
     DATABRICKS_SCHEMA="<schema_name>" \
     NEXTAUTH_URL="https://$APP.azurewebsites.net" \
     NODE_ENV="production"
+```
+
+Required Azure resource tags:
+
+```text
+BusinessUnit=Manutenção
+CostCenter=150
+CreatedBy=gustavoandrade@bemol.com.br
+Owner=Gustavo Andrade
+project=RECICLAGEM
 ```
 
 ## 3. Configure Startup Command

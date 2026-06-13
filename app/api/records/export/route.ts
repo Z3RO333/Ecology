@@ -3,10 +3,14 @@ import { auth } from '@/lib/auth';
 import { getRecords } from '@/lib/databricks';
 import { DEFAULT_DATE_FROM, DEFAULT_DATE_TO } from '@/lib/constants';
 import { formatRecordDateTime } from '@/lib/format';
+import { hasPermission } from '@/lib/access-control';
 
 export async function GET(req: NextRequest) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!hasPermission(session.user.role, 'records:view')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const { searchParams } = req.nextUrl;
   const dateFrom = searchParams.get('dateFrom') ?? DEFAULT_DATE_FROM();

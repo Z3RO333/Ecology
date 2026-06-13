@@ -2,6 +2,7 @@
 
 import { insertRecord } from '@/lib/databricks';
 import { MATERIALS, SECTORS } from '@/lib/constants';
+import { canSubmitTabletRecord } from '@/lib/tablet-access';
 import type { Material, Sector } from '@/types';
 
 interface ActionResult {
@@ -11,6 +12,10 @@ interface ActionResult {
 }
 
 export async function createRecord(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {
+  if (!(await canSubmitTabletRecord())) {
+    return { success: false, error: 'Acesso operacional expirado. Entre novamente no tablet.' };
+  }
+
   const material = formData.get('material_type') as Material;
   const weightRaw = formData.get('weight_kg') as string;
   const sector = formData.get('sector') as Sector;
