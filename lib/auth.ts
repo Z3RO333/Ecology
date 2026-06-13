@@ -2,6 +2,7 @@ import NextAuth from 'next-auth';
 import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
 import Credentials from 'next-auth/providers/credentials';
 import { APP_ROLES, type AppRole } from '@/lib/access-control';
+import { resolveJwtRole } from '@/lib/auth-role';
 import { resolveInternalRole } from '@/lib/internal-roles';
 import { verifySupplierPassword } from '@/lib/suppliers';
 
@@ -59,14 +60,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     jwt({ token, user, profile }) {
       // Credentials login: role/supplierId come from authorize()'s returned user.
       const credentialsUser = user as { role?: AppRole; supplierId?: string } | undefined;
+      token.role = resolveJwtRole({
+        currentRole: isAppRole(token.role) ? token.role : undefined,
+        credentialsRole: credentialsUser?.role,
+        entraEmail: (profile as EntraProfile | undefined)?.email,
+      });
       if (credentialsUser?.role) {
-        token.role = credentialsUser.role;
         token.supplierId = credentialsUser.supplierId;
-        return token;
       }
-      // Entra login: derive internal role from the email allowlist.
-      const email = (profile as EntraProfile | undefined)?.email ?? token.email;
-      if (email) token.role = resolveInternalRole(email) ?? undefined;
       return token;
     },
     session({ session, token }) {
