@@ -1,7 +1,7 @@
 'use server';
 
 import { AuthError } from 'next-auth';
-import { signIn } from '@/lib/auth';
+import { signIn, signOut } from '@/lib/auth';
 import { createSupplierPassword, getSupplierUser, allowedSupplierIdForEmail } from '@/lib/suppliers';
 
 export interface SupplierAuthState {
@@ -30,7 +30,7 @@ export async function firstAccess(_prev: SupplierAuthState, form: FormData): Pro
 
   // signIn throws NEXT_REDIRECT on success (must propagate) or AuthError on failure.
   try {
-    await signIn('supplier-password', { email, password, redirectTo: '/fornecedor' });
+    await signIn('supplier-password', { email, password, redirectTo: '/fornecedor/envios' });
   } catch (error) {
     if (error instanceof AuthError) return { error: 'Conta criada, mas o login falhou. Tente novamente.' };
     throw error;
@@ -43,10 +43,14 @@ export async function supplierLogin(_prev: SupplierAuthState, form: FormData): P
   const password = String(form.get('password') ?? '');
 
   try {
-    await signIn('supplier-password', { email, password, redirectTo: '/fornecedor' });
+    await signIn('supplier-password', { email, password, redirectTo: '/fornecedor/envios' });
   } catch (error) {
     if (error instanceof AuthError) return { error: 'E-mail ou senha inválidos.' };
     throw error;
   }
   return {};
+}
+
+export async function supplierLogout(): Promise<void> {
+  await signOut({ redirectTo: '/fornecedor/login' });
 }

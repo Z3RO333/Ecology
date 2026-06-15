@@ -21,6 +21,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <Link href="/dashboard/records" className="text-gray-600 hover:text-green-700 font-medium">
               Histórico
             </Link>
+            {hasPermission(session.user.role, 'supplier-documents:review') && (
+              <Link href="/dashboard/medicoes" className="text-gray-600 hover:text-green-700 font-medium">
+                Medições
+              </Link>
+            )}
             {hasPermission(session.user.role, 'suppliers:manage') && (
               <Link href="/dashboard/fornecedores" className="text-gray-600 hover:text-green-700 font-medium">
                 Fornecedores

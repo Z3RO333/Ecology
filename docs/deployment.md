@@ -63,6 +63,8 @@ az webapp config appsettings set \
     APP_OPERATIONAL_EMAILS="operador@empresa.com" \
     TABLET_ACCESS_KEY="<chave longa exclusiva do tablet>" \
     DATABASE_URL="<configured directly from the PostgreSQL resource>" \
+    AZURE_STORAGE_CONNECTION_STRING="<storage account connection string>" \
+    AZURE_STORAGE_CONTAINER="medicoes" \
     DATABRICKS_SERVER_HOSTNAME="<workspace>.azuredatabricks.net" \
     DATABRICKS_HTTP_PATH="/sql/1.0/warehouses/<warehouse_id>" \
     DATABRICKS_TOKEN="<personal_access_token>" \
@@ -71,6 +73,15 @@ az webapp config appsettings set \
     NEXTAUTH_URL="https://$APP.azurewebsites.net" \
     NODE_ENV="production"
 ```
+
+After configuring `DATABASE_URL`, apply the idempotent platform migrations:
+
+```bash
+npm run db:migrate
+```
+
+The storage container is private. Documents are opened only through the authenticated
+`/api/documents/[id]` route.
 
 Required Azure resource tags:
 

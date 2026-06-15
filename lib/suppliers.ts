@@ -84,8 +84,17 @@ export async function listSuppliers(): Promise<Supplier[]> {
   );
 }
 
-export async function listAllowedEmails(): Promise<Array<{ email: string; supplier_id: string }>> {
-  return sql(`SELECT email::text AS email, supplier_id FROM supplier_allowed_emails WHERE active = TRUE ORDER BY email`);
+export async function listAllowedEmails(): Promise<
+  Array<{ email: string; supplier_id: string; has_password: boolean }>
+> {
+  return sql(
+    `SELECT sae.email::text AS email, sae.supplier_id,
+            (au.password_hash IS NOT NULL AND au.active = TRUE) AS has_password
+     FROM supplier_allowed_emails sae
+     LEFT JOIN app_users au ON au.email = sae.email AND au.role = 'supplier'
+     WHERE sae.active = TRUE
+     ORDER BY sae.email`
+  );
 }
 
 export async function createSupplier(legalName: string, cnpj: string | null): Promise<Supplier> {

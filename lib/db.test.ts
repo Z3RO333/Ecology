@@ -9,6 +9,7 @@ vi.mock('pg', () => ({
 
 describe('sqlOne', () => {
   it('returns the first row', async () => {
+    process.env.DATABASE_URL = 'postgres://test:test@localhost:5432/test';
     const { sqlOne } = await import('./db');
     const row = await sqlOne<{ n: number }>('SELECT 1');
     expect(row).toEqual({ n: 1 });

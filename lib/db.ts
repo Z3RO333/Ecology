@@ -1,13 +1,18 @@
 import 'server-only';
-import { Pool, type QueryResultRow } from 'pg';
+import { Pool, type PoolClient, type QueryResultRow } from 'pg';
 
 // Single shared pool across the serverless/runtime instance.
 declare global {
-  // eslint-disable-next-line no-var
   var __ecoPgPool: Pool | undefined;
 }
 
 function getPool(): Pool {
+  if (!process.env.DATABASE_URL) {
+    throw new Error(
+      'DATABASE_URL não está configurada. Defina a conexão PostgreSQL antes de acessar este módulo.'
+    );
+  }
+
   if (!global.__ecoPgPool) {
     global.__ecoPgPool = new Pool({
       connectionString: process.env.DATABASE_URL,
@@ -33,4 +38,21 @@ export async function sqlOne<T extends QueryResultRow = QueryResultRow>(
 ): Promise<T | null> {
   const rows = await sql<T>(text, params);
   return rows[0] ?? null;
+}
+
+export async function withTransaction<T>(
+  callback: (client: PoolClient) => Promise<T>
+): Promise<T> {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    const result = await callback(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }

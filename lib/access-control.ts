@@ -33,7 +33,7 @@ export function hasPermission(role: AppRole | undefined, permission: Permission)
 }
 
 export function homeForRole(role: AppRole | undefined): string {
-  if (role === 'supplier') return '/fornecedor';
+  if (role === 'supplier') return '/fornecedor/envios';
   if (role === 'operational') return '/tablet';
   return '/dashboard';
 }

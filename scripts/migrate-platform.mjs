@@ -13,6 +13,7 @@ databaseUrl.searchParams.delete('sslmode');
 const migrationPaths = [
   new URL('../docs/sql/001_platform_core.sql', import.meta.url),
   new URL('../docs/sql/002_supplier_auth.sql', import.meta.url),
+  new URL('../docs/sql/003_document_submissions_responsible.sql', import.meta.url),
 ];
 const client = new pg.Client({
   connectionString: databaseUrl.toString(),
