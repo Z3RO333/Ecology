@@ -33,6 +33,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = String(creds?.email ?? '');
         const password = String(creds?.password ?? '');
         if (!email || !password) return null;
+        // Keep supplier and internal namespaces disjoint: an internal-domain
+        // address can never authenticate as a supplier via password.
+        if (ALLOWED_DOMAIN && email.toLowerCase().endsWith(`@${ALLOWED_DOMAIN}`)) return null;
         const user = await verifySupplierPassword(email, password);
         if (!user) return null;
         return { id: user.id, email: user.email, role: 'supplier', supplierId: user.supplier_id } as never;
