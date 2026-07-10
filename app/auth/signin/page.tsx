@@ -3,6 +3,10 @@ import { Leaf, KeyRound, Building2 } from 'lucide-react';
 import { signIn } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
+function isSafeCallback(url: string | undefined): url is string {
+  return !!url && /^\/[^/\\]/.test(url);
+}
+
 export default async function SignInPage({
   searchParams,
 }: {
@@ -19,7 +23,7 @@ export default async function SignInPage({
       await signIn('internal-password', {
         email,
         password,
-        redirectTo: callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//') ? callbackUrl : '/dashboard',
+        redirectTo: isSafeCallback(callbackUrl) ? callbackUrl : '/dashboard',
       });
     } catch (err) {
       if (err && typeof err === 'object' && 'digest' in err) throw err;

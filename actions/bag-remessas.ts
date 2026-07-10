@@ -1,8 +1,8 @@
 'use server';
 
-import { auth } from '@/lib/auth';
 import { criarRemessa, receberIda, enviarVolta, receberVolta } from '@/lib/bag-remessas';
 import { getLocalById } from '@/lib/locations';
+import { canSubmitTabletRecord } from '@/lib/tablet-access';
 import { sendRemessaEnviadaEmail, sendRemessaRecebidaEmail, sendDevolucaoEnviadaEmail, sendVoltaRecebidaEmail } from '@/lib/bag-email';
 
 interface ActionResult {
@@ -15,8 +15,9 @@ export async function enviarBagsAction(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: 'Acesso negado.' };
+  if (!(await canSubmitTabletRecord())) {
+    return { success: false, error: 'Acesso operacional expirado. Entre novamente.' };
+  }
 
   const origemId = formData.get('origem_id') as string;
   const destinoId = formData.get('destino_id') as string;
@@ -53,8 +54,9 @@ export async function receberIdaAction(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: 'Acesso negado.' };
+  if (!(await canSubmitTabletRecord())) {
+    return { success: false, error: 'Acesso operacional expirado. Entre novamente.' };
+  }
 
   const remessaId = formData.get('remessa_id') as string;
   const quantidade = parseInt(formData.get('quantidade_recebida') as string, 10);
@@ -92,8 +94,9 @@ export async function enviarVoltaAction(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: 'Acesso negado.' };
+  if (!(await canSubmitTabletRecord())) {
+    return { success: false, error: 'Acesso operacional expirado. Entre novamente.' };
+  }
 
   const remessaId = formData.get('remessa_id') as string;
   const quantidade = parseInt(formData.get('quantidade') as string, 10);
@@ -131,8 +134,9 @@ export async function receberVoltaAction(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: 'Acesso negado.' };
+  if (!(await canSubmitTabletRecord())) {
+    return { success: false, error: 'Acesso operacional expirado. Entre novamente.' };
+  }
 
   const remessaId = formData.get('remessa_id') as string;
   const quantidade = parseInt(formData.get('quantidade_recebida') as string, 10);

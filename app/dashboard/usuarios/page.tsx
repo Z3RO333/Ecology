@@ -1,9 +1,17 @@
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
+import { hasPermission } from '@/lib/access-control';
 import { listInternalUsers } from '@/lib/internal-users';
 import { getLocais } from '@/lib/locations';
 import { createUserAction, resetPasswordAction, toggleUserActiveAction } from '@/actions/user-admin';
 
 async function UsersContent() {
+  const session = await auth();
+  if (!session?.user || !hasPermission(session.user.role, 'users:manage')) {
+    redirect('/dashboard');
+  }
+
   const [users, locais] = await Promise.all([
     listInternalUsers(),
     getLocais(),
