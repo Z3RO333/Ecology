@@ -11,6 +11,9 @@ export const PERMISSIONS = [
   'supplier-documents:review',
   'supplier-documents:submit',
   'supplier-documents:view-own',
+  'bags:view',
+  'bags:create',
+  'bags:manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -23,8 +26,11 @@ const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
     'records:create',
     'suppliers:manage',
     'supplier-documents:review',
+    'bags:view',
+    'bags:create',
+    'bags:manage',
   ],
-  operational: ['records:create'],
+  operational: ['dashboard:view', 'records:create', 'bags:create', 'bags:view'],
   supplier: ['supplier-documents:submit', 'supplier-documents:view-own'],
 };
 
@@ -34,6 +40,6 @@ export function hasPermission(role: AppRole | undefined, permission: Permission)
 
 export function homeForRole(role: AppRole | undefined): string {
   if (role === 'supplier') return '/fornecedor/envios';
-  if (role === 'operational') return '/tablet';
+  if (role === 'operational') return '/dashboard/bags';
   return '/dashboard';
 }

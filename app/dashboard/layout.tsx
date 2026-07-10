@@ -8,22 +8,32 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!session?.user || !hasPermission(session.user.role, 'dashboard:view')) {
     redirect('/auth/signin');
   }
+  if (session.user.mustChangePassword) {
+    redirect('/auth/trocar-senha');
+  }
+
+  const isAdmin = hasPermission(session.user.role, 'users:manage');
+  const isManager = hasPermission(session.user.role, 'records:view');
 
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <span className="font-bold text-gray-900">♻ EcoTracker</span>
+          <span className="font-bold text-gray-900">EcoTracker</span>
           <nav className="flex gap-4 text-sm">
-            <Link href="/dashboard" className="text-gray-600 hover:text-green-700 font-medium">
-              Painel
-            </Link>
-            <Link href="/dashboard/records" className="text-gray-600 hover:text-green-700 font-medium">
-              Histórico
-            </Link>
+            {isManager && (
+              <Link href="/dashboard" className="text-gray-600 hover:text-green-700 font-medium">
+                Painel
+              </Link>
+            )}
+            {isManager && (
+              <Link href="/dashboard/records" className="text-gray-600 hover:text-green-700 font-medium">
+                Historico
+              </Link>
+            )}
             {hasPermission(session.user.role, 'supplier-documents:review') && (
               <Link href="/dashboard/medicoes" className="text-gray-600 hover:text-green-700 font-medium">
-                Medições
+                Medicoes
               </Link>
             )}
             {hasPermission(session.user.role, 'suppliers:manage') && (
@@ -31,6 +41,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 Fornecedores
               </Link>
             )}
+            {hasPermission(session.user.role, 'bags:view') && (
+              <Link href="/dashboard/bags" className="text-gray-600 hover:text-green-700 font-medium">
+                Bags
+              </Link>
+            )}
+            {isAdmin && (
+              <Link href="/dashboard/usuarios" className="text-gray-600 hover:text-green-700 font-medium">
+                Usuarios
+              </Link>
+            )}
+            <span className="text-gray-300">|</span>
+            <Link href="/tablet" className="text-gray-600 hover:text-green-700 font-medium">
+              Tablet
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-3">

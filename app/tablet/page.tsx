@@ -1,142 +1,36 @@
-'use client';
+import Link from 'next/link';
 
-import { useState, useActionState, useEffect, useRef, useCallback } from 'react';
-import { createRecord } from '@/actions/records';
-import { MaterialSelector } from '@/components/tablet/MaterialSelector';
-import { WeightInput } from '@/components/tablet/WeightInput';
-import { SectorDropdown } from '@/components/tablet/SectorDropdown';
-import type { Material, Sector } from '@/types';
-
-const INITIAL_STATE = { success: false, error: undefined };
-// Clear a half-filled form on its own after this long without interaction.
-const IDLE_RESET_MS = 90_000;
-
-export default function TabletPage() {
-  const [material, setMaterial] = useState<Material | null>(null);
-  const [weight, setWeight] = useState(0);
-  const [sector, setSector] = useState<Sector | ''>('');
-  const [responsible, setResponsible] = useState('');
-  const [notes, setNotes] = useState('');
-  const [showNotes, setShowNotes] = useState(false);
-  const [activity, setActivity] = useState(0);
-
-  const formRef = useRef<HTMLFormElement>(null);
-  const [state, formAction, isPending] = useActionState(createRecord, INITIAL_STATE);
-
-  const resetForm = useCallback(() => {
-    setMaterial(null);
-    setWeight(0);
-    setSector('');
-    setResponsible('');
-    setNotes('');
-    setShowNotes(false);
-    formRef.current?.reset();
-  }, []);
-
-  // Reset shortly after a successful save.
-  useEffect(() => {
-    if (!state.success) return;
-    const timer = setTimeout(resetForm, 2000);
-    return () => clearTimeout(timer);
-  }, [state.success, resetForm]);
-
-  // Idle auto-reset: if someone starts a record and walks away, return the
-  // kiosk to a clean state. The timer restarts on any interaction (activity).
-  const isDirty =
-    material !== null ||
-    weight !== 0 ||
-    sector !== '' ||
-    responsible !== '' ||
-    notes !== '' ||
-    showNotes;
-  useEffect(() => {
-    if (!isDirty || isPending || state.success) return;
-    const timer = setTimeout(resetForm, IDLE_RESET_MS);
-    return () => clearTimeout(timer);
-  }, [isDirty, isPending, state.success, activity, resetForm]);
-
-  const bumpActivity = useCallback(() => setActivity((a) => a + 1), []);
-
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('pt-BR', {
-    weekday: 'long', day: '2-digit', month: 'short', year: 'numeric',
-  });
-  const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
+export default function TabletHomePage() {
   return (
-    <div className="min-h-screen bg-green-50">
-      <div className="bg-green-600 text-white px-6 py-6 text-center">
-        <h1 className="text-3xl font-bold">♻ Registro de Reciclagem</h1>
-        <p className="text-green-100 text-base mt-1 capitalize">{dateStr} · {timeStr}</p>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="bg-green-600 text-white px-6 py-8 text-center">
+        <h1 className="text-4xl font-bold">EcoTracker</h1>
+        <p className="text-green-100 text-lg mt-2">
+          Plataforma de Reciclagem e Rastreabilidade
+        </p>
       </div>
 
-      <form
-        ref={formRef}
-        action={formAction}
-        onPointerDown={bumpActivity}
-        onKeyDown={bumpActivity}
-        className="max-w-2xl mx-auto px-5 py-8 space-y-7"
-      >
-        <input type="hidden" name="material_type" value={material ?? ''} />
-
-        <MaterialSelector value={material} onChange={setMaterial} />
-        <SectorDropdown value={sector} onChange={setSector} />
-        <WeightInput value={weight} onChange={setWeight} />
-
-        {/* Responsável */}
-        <div>
-          <p className="text-lg font-bold text-green-800 mb-3">4. Responsável *</p>
-          <input
-            name="responsible_name"
-            type="text"
-            value={responsible}
-            onChange={(event) => setResponsible(event.target.value)}
-            placeholder="Nome do colaborador..."
-            className="w-full bg-white border-2 border-gray-200 rounded-2xl p-5 text-gray-700 focus:border-green-500 outline-none text-xl"
-          />
-        </div>
-
-        {/* Observações toggle */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowNotes(!showNotes)}
-            className="text-base text-green-700 underline"
+      <div className="flex-1 flex items-center justify-center px-5 py-8">
+        <div className="w-full max-w-2xl grid grid-cols-2 gap-5">
+          <Link
+            href="/tablet/reciclagem"
+            className="bg-green-500 active:bg-green-600 text-white rounded-3xl p-8 text-center shadow-md transition-colors"
           >
-            {showNotes ? '▲ Ocultar observações' : '▼ Adicionar observação (opcional)'}
-          </button>
-          {showNotes && (
-            <textarea
-              name="notes"
-              rows={3}
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              placeholder="Observações..."
-              className="mt-2 w-full bg-white border-2 border-gray-200 rounded-2xl p-4 text-gray-700 focus:border-green-500 outline-none text-lg resize-none"
-            />
-          )}
+            <span className="text-5xl block mb-3">&#9851;</span>
+            <span className="text-2xl font-bold block">Registrar Reciclagem</span>
+            <span className="text-green-100 text-base mt-1 block">Peso e materiais</span>
+          </Link>
+
+          <Link
+            href="/tablet/bags"
+            className="bg-blue-500 active:bg-blue-600 text-white rounded-3xl p-8 text-center shadow-md transition-colors"
+          >
+            <span className="text-5xl block mb-3">&#128230;</span>
+            <span className="text-2xl font-bold block">Bags</span>
+            <span className="text-blue-100 text-base mt-1 block">Enviar e receber</span>
+          </Link>
         </div>
-
-        {/* Error / Success */}
-        {state.error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-lg">
-            {state.error}
-          </div>
-        )}
-        {state.success && (
-          <div className="bg-green-100 border border-green-300 text-green-800 rounded-2xl p-5 text-center text-xl font-semibold">
-            ✓ Registro salvo com sucesso!
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={isPending || state.success}
-          className="w-full bg-green-600 active:bg-green-700 disabled:bg-gray-300 text-white font-bold py-7 rounded-2xl text-2xl transition-colors shadow-md"
-        >
-          {isPending ? 'Salvando...' : state.success ? '✓ Salvo!' : '✓ Confirmar Registro'}
-        </button>
-      </form>
+      </div>
     </div>
   );
 }

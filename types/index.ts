@@ -9,13 +9,11 @@ export type Material =
   | 'Outro';
 
 export type Sector =
-  | 'Escritório 1'
-  | 'Copa'
+  | 'Escritório Central'
   | 'Escritório Anexo'
-  | 'Loja'
-  | 'Mercado'
   | 'Farma'
-  | 'Outros';
+  | 'Loja'
+  | 'Mercado';
 
 export interface RecyclingRecord {
   id: string;
@@ -73,3 +71,18 @@ export interface DashboardFilters {
   materials: Material[];
   periodView: PeriodView;
 }
+
+export type {
+  BagStatus,
+  BagAcao,
+  LocalTipo,
+  Local,
+  Bag,
+  BagMovimentacao,
+  CreateBagInput,
+  CreateMovimentacaoInput,
+  BagKPIData,
+  RemessaStatus,
+  BagRemessa,
+  RemessaKPIData,
+} from './bags';

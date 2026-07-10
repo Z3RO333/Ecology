@@ -13,13 +13,11 @@ export const MATERIALS: Material[] = [
 ];
 
 export const SECTORS: Sector[] = [
-  'Escritório 1',
-  'Copa',
+  'Escritório Central',
   'Escritório Anexo',
+  'Farma',
   'Loja',
   'Mercado',
-  'Farma',
-  'Outros',
 ];
 
 export const MATERIAL_COLORS: Record<Material, string> = {

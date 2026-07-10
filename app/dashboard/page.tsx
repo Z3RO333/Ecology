@@ -1,4 +1,6 @@
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
 import { KPICards } from '@/components/dashboard/KPICards';
 import { WeeklyBarChart } from '@/components/dashboard/WeeklyBarChart';
 import { MaterialPieChart } from '@/components/dashboard/MaterialPieChart';
@@ -45,7 +47,12 @@ async function DashboardContent({ searchParams }: PageProps) {
   );
 }
 
-export default function DashboardPage({ searchParams }: PageProps) {
+export default async function DashboardPage({ searchParams }: PageProps) {
+  const session = await auth();
+  if (session?.user?.role === 'operational') {
+    redirect('/dashboard/bags');
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">

@@ -14,6 +14,11 @@ const migrationPaths = [
   new URL('../docs/sql/001_platform_core.sql', import.meta.url),
   new URL('../docs/sql/002_supplier_auth.sql', import.meta.url),
   new URL('../docs/sql/003_document_submissions_responsible.sql', import.meta.url),
+  new URL('../docs/sql/004_bags_module.sql', import.meta.url),
+  new URL('../docs/sql/005_bag_remessas.sql', import.meta.url),
+  new URL('../docs/sql/006_locais_email_binding.sql', import.meta.url),
+  new URL('../docs/sql/007_internal_user_passwords.sql', import.meta.url),
+  new URL('../docs/sql/008_remessa_ciclo.sql', import.meta.url),
 ];
 const client = new pg.Client({
   connectionString: databaseUrl.toString(),
