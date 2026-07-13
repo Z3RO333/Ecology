@@ -1,10 +1,20 @@
 import Link from 'next/link';
-import { Leaf, KeyRound, Building2 } from 'lucide-react';
+import { ArrowRight, Building2, Leaf, ShieldCheck } from 'lucide-react';
 import { signIn } from '@/lib/auth';
-import { redirect } from 'next/navigation';
 
 function isSafeCallback(url: string | undefined): url is string {
   return !!url && /^\/[^/\\]/.test(url);
+}
+
+function MicrosoftLogo() {
+  return (
+    <svg viewBox="0 0 23 23" className="h-5 w-5" aria-hidden="true">
+      <path fill="#f35325" d="M1 1h10v10H1z" />
+      <path fill="#81bc06" d="M12 1h10v10H12z" />
+      <path fill="#05a6f0" d="M1 12h10v10H1z" />
+      <path fill="#ffba08" d="M12 12h10v10H12z" />
+    </svg>
+  );
 }
 
 export default async function SignInPage({
@@ -13,94 +23,67 @@ export default async function SignInPage({
   searchParams: Promise<{ callbackUrl?: string; error?: string }>;
 }) {
   const { callbackUrl, error } = await searchParams;
+  const redirectTo = isSafeCallback(callbackUrl) ? callbackUrl : '/dashboard';
 
-  async function loginWithPassword(formData: FormData) {
+  async function loginWithMicrosoft() {
     'use server';
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-
-    try {
-      await signIn('internal-password', {
-        email,
-        password,
-        redirectTo: isSafeCallback(callbackUrl) ? callbackUrl : '/dashboard',
-      });
-    } catch (err) {
-      if (err && typeof err === 'object' && 'digest' in err) throw err;
-      redirect('/auth/signin?error=credentials');
-    }
+    await signIn('microsoft-entra-id', { redirectTo });
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-50 px-4 py-12">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.12),transparent_45%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(5,150,105,0.12),transparent_50%)]" />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f4f7fb] px-4 py-12">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.13),transparent_44%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(5,150,105,0.11),transparent_48%)]" />
 
-      <section className="page-enter relative w-full max-w-md rounded-[26px] border border-slate-200 bg-white/95 p-7 text-center shadow-[0_24px_70px_rgba(15,23,42,0.12)] sm:p-8">
-        <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-900 text-white shadow-xl shadow-slate-200">
+      <section className="page-enter relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/80 bg-white/95 p-7 text-center shadow-[0_24px_70px_rgba(15,23,42,0.13)] sm:p-8">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-blue-100/60 blur-3xl" />
+
+        <span className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-950 text-white shadow-xl shadow-slate-200">
           <Leaf className="h-8 w-8" />
         </span>
-        <h1 className="mt-4 text-2xl font-bold text-slate-950">EcoTracker</h1>
-        <p className="mt-1 text-sm text-slate-500">Acesse com seu e-mail e senha</p>
+        <div className="relative mt-4">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700">
+            <ShieldCheck className="h-3.5 w-3.5" /> Acesso corporativo
+          </span>
+          <h1 className="mt-3 text-2xl font-bold tracking-[-0.025em] text-slate-950">Bem-vindo ao EcoTracker</h1>
+          <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-slate-500">
+            Colaboradores Bemol acessam com a conta corporativa Microsoft.
+          </p>
+        </div>
 
-        <form action={loginWithPassword} className="mt-7 space-y-3 text-left">
-          <div>
-            <label htmlFor="email" className="block text-xs font-semibold text-slate-600 mb-1">E-mail</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              autoFocus
-              placeholder="seu.email@bemol.com.br"
-              className="w-full rounded-xl border-2 border-slate-200 px-4 py-3.5 text-sm outline-none focus:border-green-500"
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="block text-xs font-semibold text-slate-600 mb-1">Senha</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              placeholder="Sua senha"
-              className="w-full rounded-xl border-2 border-slate-200 px-4 py-3.5 text-sm outline-none focus:border-green-500"
-            />
-          </div>
+        {error && (
+          <p className="relative mt-5 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700" role="alert">
+            Não foi possível concluir o acesso. Verifique sua conta corporativa e tente novamente.
+          </p>
+        )}
 
-          {error && (
-            <p className="text-red-600 bg-red-50 border border-red-200 rounded-xl p-2.5 text-xs text-center">
-              E-mail ou senha incorretos. Verifique e tente novamente.
-            </p>
-          )}
-
+        <form action={loginWithMicrosoft} className="relative mt-7">
           <button
             type="submit"
-            className="flex w-full items-center justify-center gap-3 rounded-xl bg-green-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-green-100 transition hover:bg-green-700"
+            className="group flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-bold text-slate-800 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-md active:translate-y-0"
           >
-            <KeyRound className="h-5 w-5" />
-            Entrar
+            <MicrosoftLogo />
+            Entrar com Microsoft
+            <ArrowRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" />
           </button>
         </form>
 
-        <div className="flex items-center gap-3 py-4">
+        <div className="relative my-6 flex items-center gap-3">
           <span className="h-px flex-1 bg-slate-200" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-            fornecedor
-          </span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">acesso externo</span>
           <span className="h-px flex-1 bg-slate-200" />
         </div>
 
         <Link
           href="/fornecedor/login"
-          className="flex w-full items-center justify-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3.5 text-sm font-bold text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-100"
+          className="relative flex w-full items-center justify-center gap-3 rounded-xl bg-emerald-50 px-4 py-3.5 text-sm font-bold text-emerald-800 ring-1 ring-inset ring-emerald-200 transition hover:bg-emerald-100"
         >
           <Building2 className="h-5 w-5" />
-          Entrar como fornecedor
+          Acessar como fornecedor
         </Link>
 
-        <p className="mt-5 rounded-xl bg-amber-50 px-3 py-2.5 text-left text-xs text-amber-800">
-          <strong>Primeiro acesso?</strong> Use a senha temporaria fornecida pelo administrador.
+        <p className="relative mt-5 text-xs leading-5 text-slate-400">
+          O acesso de colaboradores é protegido pela identidade Microsoft da organização.
         </p>
       </section>
     </main>
