@@ -32,8 +32,7 @@ export const MATERIAL_COLORS: Record<Material, string> = {
 };
 
 export const DEFAULT_DATE_FROM = (): string => {
-  const today = formatDateInAppTimeZone();
-  return `${today.slice(0, 8)}01`;
+  return '2000-01-01';
 };
 
 export const DEFAULT_DATE_TO = (): string => {

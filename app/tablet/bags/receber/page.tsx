@@ -23,7 +23,7 @@ export default function ReceberBagsPage() {
   const [quantidadeRecebida, setQuantidadeRecebida] = useState(0);
   const [responsavel, setResponsavel] = useState('');
   const [observacao, setObservacao] = useState('');
-  const [loadingRemessas, setLoadingRemessas] = useState(false);
+  const [loadingRemessas, setLoadingRemessas] = useState(true);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const router = useRouter();
@@ -64,7 +64,6 @@ export default function ReceberBagsPage() {
   // Load pending shipments for my location
   useEffect(() => {
     if (!meuLocal) return;
-    setLoadingRemessas(true);
     fetch(`/api/bags/remessas?status=em_transito&destino_id=${meuLocal.id}`)
       .then((r) => r.json())
       .then((data) => setRemessas(data.remessas ?? []))

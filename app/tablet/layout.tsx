@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { PWARegister } from '@/components/tablet/PWARegister';
+import { ViewTransition } from 'react';
 
 export const metadata: Metadata = {
   title: 'EcoTracker — Registro',
@@ -32,7 +33,7 @@ export default function TabletLayout({ children }: { children: React.ReactNode }
     // bounce — keeps the surface feeling like a native operational app.
     <div className="select-none [-webkit-touch-callout:none] [-webkit-tap-highlight-color:transparent] [overscroll-behavior:none] [touch-action:manipulation]">
       <PWARegister />
-      {children}
+      <ViewTransition default="dashboard-page">{children}</ViewTransition>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { hasPermission } from '@/lib/access-control';
 import { listInternalUsers } from '@/lib/internal-users';
 import { getLocais } from '@/lib/locations';
+import { listSuppliers, listAllowedEmails } from '@/lib/suppliers';
 import { createUserAction, resetPasswordAction, toggleUserActiveAction } from '@/actions/user-admin';
 
 async function UsersContent() {
@@ -12,10 +13,14 @@ async function UsersContent() {
     redirect('/dashboard');
   }
 
-  const [users, locais] = await Promise.all([
+  const [users, locais, suppliers, allowedEmails] = await Promise.all([
     listInternalUsers(),
     getLocais(),
+    listSuppliers(),
+    listAllowedEmails(),
   ]);
+
+  const supplierNameById = new Map(suppliers.map((s) => [s.id, s.legal_name]));
 
   return (
     <div className="space-y-6">
@@ -148,6 +153,44 @@ async function UsersContent() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Supplier users table */}
+      <div>
+        <h2 className="font-semibold text-gray-800 mb-3">Usuarios de fornecedores</h2>
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-left text-gray-500">
+              <tr>
+                <th className="px-4 py-3 font-medium">Fornecedor</th>
+                <th className="px-4 py-3 font-medium">E-mail</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {allowedEmails.map((e) => (
+                <tr key={e.email} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium">{supplierNameById.get(e.supplier_id) ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-600">{e.email}</td>
+                  <td className="px-4 py-3">
+                    {e.has_password ? (
+                      <span className="text-green-600 font-semibold">Acesso ativo</span>
+                    ) : (
+                      <span className="text-amber-600 font-semibold">Aguardando ativacao</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {!allowedEmails.length && (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
+                    Nenhum usuario de fornecedor cadastrado.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

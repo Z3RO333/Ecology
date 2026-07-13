@@ -18,7 +18,7 @@ export default function ReceberVoltaPage() {
   const [responsavel, setResponsavel] = useState('');
   const [observacao, setObservacao] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
-  const [loadingRemessas, setLoadingRemessas] = useState(false);
+  const [loadingRemessas, setLoadingRemessas] = useState(true);
 
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -45,7 +45,6 @@ export default function ReceberVoltaPage() {
 
   useEffect(() => {
     if (!meuLocal) return;
-    setLoadingRemessas(true);
     fetch(`/api/bags/remessas?tipo=pendentes_volta_receber&local_id=${meuLocal.id}`)
       .then((r) => r.json())
       .then((d) => setRemessas(d.remessas ?? []))

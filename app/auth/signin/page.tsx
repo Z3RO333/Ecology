@@ -36,7 +36,7 @@ export default async function SignInPage({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.12),transparent_45%)]" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(5,150,105,0.12),transparent_50%)]" />
 
-      <section className="relative w-full max-w-md rounded-[26px] border border-slate-200 bg-white/95 p-7 text-center shadow-[0_24px_70px_rgba(15,23,42,0.12)] sm:p-8">
+      <section className="page-enter relative w-full max-w-md rounded-[26px] border border-slate-200 bg-white/95 p-7 text-center shadow-[0_24px_70px_rgba(15,23,42,0.12)] sm:p-8">
         <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-900 text-white shadow-xl shadow-slate-200">
           <Leaf className="h-8 w-8" />
         </span>

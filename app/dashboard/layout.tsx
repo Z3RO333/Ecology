@@ -1,7 +1,8 @@
 import { auth, signOut } from '@/lib/auth';
 import { hasPermission } from '@/lib/access-control';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import Sidebar, { type NavGroup } from '@/components/dashboard/Sidebar';
+import { ViewTransition } from 'react';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -12,63 +13,49 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect('/auth/trocar-senha');
   }
 
-  const isAdmin = hasPermission(session.user.role, 'users:manage');
   const isManager = hasPermission(session.user.role, 'records:view');
 
+  const groups: NavGroup[] = [
+    {
+      label: 'Operação',
+      items: [
+        isManager && { href: '/dashboard', label: 'Painel' },
+        isManager && { href: '/dashboard/records', label: 'Histórico' },
+        hasPermission(session.user.role, 'bags:view') && { href: '/dashboard/bags', label: 'Bags' },
+      ].filter((item): item is { href: string; label: string } => Boolean(item)),
+    },
+    {
+      label: 'Gestão',
+      items: [
+        hasPermission(session.user.role, 'supplier-documents:review') && { href: '/dashboard/medicoes', label: 'Medições' },
+        hasPermission(session.user.role, 'suppliers:manage') && { href: '/dashboard/fornecedores', label: 'Fornecedores' },
+        hasPermission(session.user.role, 'users:manage') && { href: '/dashboard/usuarios', label: 'Usuários' },
+      ].filter((item): item is { href: string; label: string } => Boolean(item)),
+    },
+    {
+      label: 'Sistema',
+      items: [{ href: '/tablet', label: 'Tablet' }],
+    },
+  ].filter((group) => group.items.length > 0);
+
+  async function handleSignOut() {
+    'use server';
+    await signOut({ redirectTo: '/auth/signin' });
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <span className="font-bold text-gray-900">EcoTracker</span>
-          <nav className="flex gap-4 text-sm">
-            {isManager && (
-              <Link href="/dashboard" className="text-gray-600 hover:text-green-700 font-medium">
-                Painel
-              </Link>
-            )}
-            {isManager && (
-              <Link href="/dashboard/records" className="text-gray-600 hover:text-green-700 font-medium">
-                Historico
-              </Link>
-            )}
-            {hasPermission(session.user.role, 'supplier-documents:review') && (
-              <Link href="/dashboard/medicoes" className="text-gray-600 hover:text-green-700 font-medium">
-                Medicoes
-              </Link>
-            )}
-            {hasPermission(session.user.role, 'suppliers:manage') && (
-              <Link href="/dashboard/fornecedores" className="text-gray-600 hover:text-green-700 font-medium">
-                Fornecedores
-              </Link>
-            )}
-            {hasPermission(session.user.role, 'bags:view') && (
-              <Link href="/dashboard/bags" className="text-gray-600 hover:text-green-700 font-medium">
-                Bags
-              </Link>
-            )}
-            {isAdmin && (
-              <Link href="/dashboard/usuarios" className="text-gray-600 hover:text-green-700 font-medium">
-                Usuarios
-              </Link>
-            )}
-            <span className="text-gray-300">|</span>
-            <Link href="/tablet" className="text-gray-600 hover:text-green-700 font-medium">
-              Tablet
-            </Link>
-          </nav>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500">
-            {session.user.name ?? session.user.email} · {session.user.role}
-          </span>
-          <form action={async () => { 'use server'; await signOut({ redirectTo: '/auth/signin' }); }}>
-            <button type="submit" className="text-sm text-gray-500 hover:text-red-600 transition-colors">
-              Sair
-            </button>
-          </form>
-        </div>
-      </header>
-      <main className="max-w-6xl mx-auto px-6 py-6">{children}</main>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_85%_0%,rgba(187,247,208,0.28),transparent_30%),#f6f8f6] flex">
+      <Sidebar
+        groups={groups}
+        userName={session.user.name ?? session.user.email ?? ''}
+        userRole={session.user.role ?? ''}
+        onSignOut={handleSignOut}
+      />
+      <main className="min-w-0 flex-1 px-4 pb-8 pt-20 sm:px-6 lg:px-8 lg:py-8">
+        <ViewTransition default="dashboard-page">
+          <div className="mx-auto w-full max-w-[1500px] page-enter">{children}</div>
+        </ViewTransition>
+      </main>
     </div>
   );
 }
