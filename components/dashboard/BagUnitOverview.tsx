@@ -52,7 +52,7 @@ export function BagUnitOverview({ units, scoped = false }: { units: BagUnitSumma
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-        <MetricCard label="Destinadas" value={totals.destinadas} helper="Total enviado" tone="bg-blue-100 text-blue-700" Icon={PackageOpen} />
+        <MetricCard label="Destinadas" value={totals.destinadas} helper="Carga atribuída" tone="bg-blue-100 text-blue-700" Icon={PackageOpen} />
         <MetricCard label="Disponíveis" value={totals.disponiveis} helper="Prontas para uso" tone="bg-emerald-100 text-emerald-700" Icon={PackageCheck} />
         <MetricCard label="Em uso" value={totals.emUso} helper="Em operação/trânsito" tone="bg-violet-100 text-violet-700" Icon={Workflow} />
         <MetricCard label="Devolvidas" value={totals.devolvidas} helper="Retorno confirmado" tone="bg-cyan-100 text-cyan-700" Icon={RotateCcw} />
@@ -62,7 +62,7 @@ export function BagUnitOverview({ units, scoped = false }: { units: BagUnitSumma
 
       <div className="grid gap-5 xl:grid-cols-[0.72fr_1.28fr]">
         <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm">
-          <div className="mb-5"><h3 className="font-bold text-slate-900">Pendências em destaque</h3><p className="text-sm text-slate-500">Unidades com maior volume a devolver.</p></div>
+          <div className="mb-5"><h3 className="font-bold text-slate-900">Pendências em destaque</h3><p className="text-sm text-slate-500">Lojas e farmas com perdas ou devoluções pendentes.</p></div>
           <div className="space-y-4">
             {chartUnits.map((unit) => {
               const width = unit.destinadas ? Math.max((unit.devolvidas / unit.destinadas) * 100, 2) : 100;

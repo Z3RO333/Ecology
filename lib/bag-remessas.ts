@@ -227,6 +227,7 @@ interface BagUnitSummaryRow {
   disponiveis: string;
   em_uso: string;
   devolvidas: string;
+  pendentes: string;
   ultima_movimentacao: string | null;
   remessas_atrasadas: string;
 }
@@ -234,9 +235,26 @@ interface BagUnitSummaryRow {
 export async function getBagUnitSummaries(localId?: string): Promise<BagUnitSummary[]> {
   const rows = await sql<BagUnitSummaryRow>(
     `WITH remessas AS (
-       SELECT destino_id AS local_id,
-              SUM(quantidade_enviada)::text AS destinadas,
-              SUM(COALESCE(qty_volta_recebida, 0))::text AS devolvidas,
+       SELECT origem_id AS local_id,
+              COALESCE(
+                (ARRAY_AGG(qty_volta_recebida ORDER BY enviado_em DESC)
+                  FILTER (WHERE qty_volta_recebida IS NOT NULL))[1],
+                0
+              )::text AS devolvidas,
+              SUM(
+                GREATEST(quantidade_enviada - COALESCE(quantidade_recebida, quantidade_enviada), 0)
+                + GREATEST(
+                    COALESCE(qty_volta_enviada, 0)
+                    - COALESCE(qty_volta_recebida, qty_volta_enviada, 0),
+                    0
+                  )
+              )::text AS pendentes,
+              SUM(
+                CASE WHEN status <> 'concluida'
+                  THEN COALESCE(qty_volta_enviada, quantidade_recebida, quantidade_enviada)
+                  ELSE 0
+                END
+              )::text AS em_uso,
               MAX(GREATEST(
                 enviado_em,
                 COALESCE(recebido_em, enviado_em),
@@ -248,36 +266,29 @@ export async function getBagUnitSummaries(localId?: string): Promise<BagUnitSumm
                   AND enviado_em < now() - INTERVAL '7 days'
               )::text AS remessas_atrasadas
        FROM bag_remessas
-       GROUP BY destino_id
-     ), bag_status AS (
-       SELECT local_atual_id AS local_id,
-              COUNT(*) FILTER (WHERE status = 'disponivel')::text AS disponiveis,
-              COUNT(*) FILTER (WHERE status IN ('em_uso', 'em_transito'))::text AS em_uso,
-              MAX(data_ultima_movimentacao)::text AS ultima_movimentacao
-       FROM bags
-       WHERE ativo = TRUE AND local_atual_id IS NOT NULL
-       GROUP BY local_atual_id
+       GROUP BY origem_id
      )
      SELECT l.id, l.centro, l.nome, l.tipo,
-            COALESCE(r.destinadas, '0') AS destinadas,
-            COALESCE(b.disponiveis, '0') AS disponiveis,
-            COALESCE(b.em_uso, '0') AS em_uso,
+            l.bags_alocadas::text AS destinadas,
+            GREATEST(
+              l.bags_alocadas - COALESCE(r.pendentes, '0')::integer - COALESCE(r.em_uso, '0')::integer,
+              0
+            )::text AS disponiveis,
+            LEAST(
+              COALESCE(r.em_uso, '0')::integer,
+              GREATEST(l.bags_alocadas - COALESCE(r.pendentes, '0')::integer, 0)
+            )::text AS em_uso,
             COALESCE(r.devolvidas, '0') AS devolvidas,
-            CASE
-              WHEN r.ultima_movimentacao IS NULL THEN b.ultima_movimentacao
-              WHEN b.ultima_movimentacao IS NULL THEN r.ultima_movimentacao
-              ELSE GREATEST(r.ultima_movimentacao::timestamptz, b.ultima_movimentacao::timestamptz)::text
-            END AS ultima_movimentacao,
+            COALESCE(r.pendentes, '0') AS pendentes,
+            r.ultima_movimentacao,
             COALESCE(r.remessas_atrasadas, '0') AS remessas_atrasadas
      FROM locais l
      LEFT JOIN remessas r ON r.local_id = l.id
-     LEFT JOIN bag_status b ON b.local_id = l.id
      WHERE l.ativo = TRUE
-       AND l.tipo IN ('loja', 'farma', 'cd')
+       AND l.tipo IN ('loja', 'farma')
        ${localId ? 'AND l.id = $1' : ''}
-       AND (${localId ? 'TRUE' : "COALESCE(r.destinadas, '0')::integer > 0 OR COALESCE(b.disponiveis, '0')::integer > 0 OR COALESCE(b.em_uso, '0')::integer > 0"})
      ORDER BY COALESCE(r.remessas_atrasadas, '0')::integer DESC,
-              (COALESCE(r.destinadas, '0')::integer - COALESCE(r.devolvidas, '0')::integer) DESC,
+              COALESCE(r.pendentes, '0')::integer DESC,
               l.nome`,
     localId ? [localId] : []
   );
@@ -285,8 +296,8 @@ export async function getBagUnitSummaries(localId?: string): Promise<BagUnitSumm
   return rows.map((row) => {
     const destinadas = Number(row.destinadas);
     const devolvidas = Number(row.devolvidas);
-    const pendentes = Math.max(destinadas - devolvidas, 0);
-    const percentual = destinadas > 0 ? Math.min(Math.round((devolvidas / destinadas) * 100), 100) : 100;
+    const pendentes = Math.min(Number(row.pendentes), destinadas);
+    const percentual = destinadas > 0 ? Math.max(Math.round(((destinadas - pendentes) / destinadas) * 100), 0) : 100;
     const atrasadas = Number(row.remessas_atrasadas);
     const situacao: BagUnitSummary['situacao'] = atrasadas > 0 || (pendentes > 0 && percentual < 75)
       ? 'critica'

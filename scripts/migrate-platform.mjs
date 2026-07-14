@@ -24,6 +24,7 @@ const migrationPaths = [
   new URL('../docs/sql/007_internal_user_passwords.sql', import.meta.url),
   new URL('../docs/sql/008_remessa_ciclo.sql', import.meta.url),
   new URL('../docs/sql/009_user_access_profiles.sql', import.meta.url),
+  new URL('../docs/sql/010_unit_bag_allocations.sql', import.meta.url),
 ];
 const client = new pg.Client({
   connectionString: databaseUrl.toString(),

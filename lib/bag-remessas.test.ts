@@ -19,6 +19,7 @@ describe('bag unit summaries', () => {
       disponiveis: '4',
       em_uso: '3',
       devolvidas: '42',
+      pendentes: '8',
       ultima_movimentacao: '2026-07-14T10:00:00.000Z',
       remessas_atrasadas: '0',
     }]);
@@ -33,7 +34,7 @@ describe('bag unit summaries', () => {
     vi.mocked(sql).mockResolvedValue([{
       id: 'unit-2', centro: 101, nome: 'Loja Matriz', tipo: 'loja',
       destinadas: '20', disponiveis: '0', em_uso: '0', devolvidas: '18',
-      ultima_movimentacao: null, remessas_atrasadas: '1',
+      pendentes: '2', ultima_movimentacao: null, remessas_atrasadas: '1',
     }]);
 
     const [summary] = await getBagUnitSummaries('unit-2');
