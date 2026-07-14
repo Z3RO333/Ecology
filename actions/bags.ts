@@ -2,6 +2,8 @@
 
 import { createBag, registrarMovimentacao, getBagByCodigo, getNextBagCode } from '@/lib/bags';
 import { canSubmitTabletRecord } from '@/lib/tablet-access';
+import { auth } from '@/lib/auth';
+import { canAccessUnit } from '@/lib/access-control';
 import { BAG_ACOES } from '@/types/bags';
 import type { BagAcao } from '@/types/bags';
 
@@ -28,6 +30,10 @@ export async function createBagAction(
   const setor = (formData.get('setor') as string)?.trim() || undefined;
   const quantidadeRaw = formData.get('quantidade') as string;
   const quantidade = Math.min(Math.max(parseInt(quantidadeRaw, 10) || 1, 1), 100);
+  const session = await auth();
+  if (session?.user?.role === 'manager' && (!localId || !canAccessUnit(session.user.role, session.user.localId, localId))) {
+    return { success: false, error: 'Você só pode cadastrar bags na sua unidade.' };
+  }
 
   try {
     const codigos: string[] = [];
@@ -82,6 +88,13 @@ export async function registrarMovimentacaoAction(
     const bag = await getBagByCodigo(codigo);
     if (!bag) {
       return { success: false, error: `Bag "${codigo}" não encontrada.` };
+    }
+    const session = await auth();
+    if (session?.user?.role === 'manager') {
+      const touchesAssignedUnit = Boolean(session.user.localId) && (
+        bag.local_atual_id === session.user.localId || localDestinoId === session.user.localId
+      );
+      if (!touchesAssignedUnit) return { success: false, error: 'Esta bag não pertence à sua unidade.' };
     }
 
     await registrarMovimentacao({

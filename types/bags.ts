@@ -164,3 +164,21 @@ export interface RemessaKPIData {
   bags_recebidas: number;
   bags_perdidas: number;
 }
+
+export type BagUnitSituation = 'regular' | 'atencao' | 'critica';
+
+export interface BagUnitSummary {
+  id: string;
+  centro: number | null;
+  nome: string;
+  tipo: LocalTipo;
+  destinadas: number;
+  disponiveis: number;
+  em_uso: number;
+  devolvidas: number;
+  pendentes: number;
+  percentual_devolucao: number;
+  ultima_movimentacao: string | null;
+  remessas_atrasadas: number;
+  situacao: BagUnitSituation;
+}

@@ -18,13 +18,20 @@ export async function GET(req: NextRequest) {
   const kpis = searchParams.get('kpis') === 'true';
 
   try {
+    if (session.user.role === 'manager' && !session.user.localId) {
+      return NextResponse.json({ error: 'Unidade não vinculada' }, { status: 403 });
+    }
+    if (session.user.role === 'manager' && localId && localId !== session.user.localId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const effectiveLocalId = session.user.role === 'manager' ? session.user.localId : localId ?? undefined;
     if (kpis) {
-      const data = await getBagKPIs();
+      const data = await getBagKPIs(effectiveLocalId);
       return NextResponse.json({ kpis: data });
     }
     const bags = await getBags({
       status: status ?? undefined,
-      local_id: localId ?? undefined,
+      local_id: effectiveLocalId,
       limit,
       offset,
     });

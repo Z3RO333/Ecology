@@ -19,6 +19,9 @@ export async function GET(
     if (!bag) {
       return NextResponse.json({ error: 'Bag não encontrada' }, { status: 404 });
     }
+    if (session.user.role === 'manager' && bag.local_atual_id !== session.user.localId) {
+      return NextResponse.json({ error: 'Bag não encontrada' }, { status: 404 });
+    }
     return NextResponse.json({ bag });
   } catch (err) {
     console.error('GET /api/bags/[codigo] error:', err);

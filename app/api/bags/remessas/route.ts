@@ -22,23 +22,31 @@ export async function GET(req: NextRequest) {
   const kpis = searchParams.get('kpis') === 'true';
 
   try {
+    if (session.user.role === 'manager' && !session.user.localId) {
+      return NextResponse.json({ error: 'Unidade não vinculada' }, { status: 403 });
+    }
+    if (session.user.role === 'manager' && localId && localId !== session.user.localId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const effectiveLocalId = session.user.role === 'manager' ? session.user.localId : localId ?? undefined;
+
     if (kpis) {
-      return NextResponse.json({ kpis: await getRemessaKPIs() });
+      return NextResponse.json({ kpis: await getRemessaKPIs(effectiveLocalId) });
     }
 
-    if (tipo === 'pendentes_receber' && localId) {
-      return NextResponse.json({ remessas: await getRemessasPendentesParaReceber(localId) });
+    if (tipo === 'pendentes_receber' && effectiveLocalId) {
+      return NextResponse.json({ remessas: await getRemessasPendentesParaReceber(effectiveLocalId) });
     }
-    if (tipo === 'pendentes_devolver' && localId) {
-      return NextResponse.json({ remessas: await getRemessasPendentesParaDevolver(localId) });
+    if (tipo === 'pendentes_devolver' && effectiveLocalId) {
+      return NextResponse.json({ remessas: await getRemessasPendentesParaDevolver(effectiveLocalId) });
     }
-    if (tipo === 'pendentes_volta_receber' && localId) {
-      return NextResponse.json({ remessas: await getRemessasPendentesVoltaReceber(localId) });
+    if (tipo === 'pendentes_volta_receber' && effectiveLocalId) {
+      return NextResponse.json({ remessas: await getRemessasPendentesVoltaReceber(effectiveLocalId) });
     }
 
     const limit = parseInt(searchParams.get('limit') ?? '50');
     const offset = parseInt(searchParams.get('offset') ?? '0');
-    return NextResponse.json({ remessas: await getRemessas({ status: status ?? undefined, limit, offset }) });
+    return NextResponse.json({ remessas: await getRemessas({ status: status ?? undefined, local_id: effectiveLocalId, limit, offset }) });
   } catch (err) {
     console.error('GET /api/bags/remessas error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

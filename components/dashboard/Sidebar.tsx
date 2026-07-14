@@ -30,8 +30,9 @@ export interface NavGroup {
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Administrador',
-  manager: 'Gestor',
+  manager: 'Gerente de Loja',
   operational: 'Operacional',
+  viewer: 'Visualizador',
   supplier: 'Fornecedor',
 };
 

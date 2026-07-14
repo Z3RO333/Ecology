@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { sql, sqlOne } from '@/lib/db';
-import type { BagRemessa, RemessaKPIData } from '@/types/bags';
+import type { BagRemessa, BagUnitSummary, RemessaKPIData } from '@/types/bags';
 
 const SELECT_REMESSA = `
   SELECT r.id, r.origem_id, lo.nome AS origem_nome, r.destino_id, ld.nome AS destino_nome,
@@ -39,16 +39,16 @@ export async function criarRemessa(input: {
   return row!;
 }
 
+export async function getRemessaById(id: string): Promise<BagRemessa | null> {
+  return sqlOne<BagRemessa>(`${SELECT_REMESSA} WHERE r.id = $1`, [id]);
+}
+
 export async function receberIda(input: {
   remessa_id: string;
   quantidade_recebida: number;
   recebido_por: string;
   observacao_recebimento?: string;
 }): Promise<BagRemessa> {
-  const newStatus = input.quantidade_recebida === 0
-    ? 'ida_divergencia'
-    : 'ida_recebida';
-
   const row = await sqlOne<BagRemessa>(
     `UPDATE bag_remessas
      SET quantidade_recebida = $1,
@@ -123,6 +123,7 @@ export async function receberVolta(input: {
 
 export async function getRemessas(filters?: {
   status?: string;
+  local_id?: string;
   limit?: number;
   offset?: number;
 }): Promise<BagRemessa[]> {
@@ -133,6 +134,11 @@ export async function getRemessas(filters?: {
   if (filters?.status) {
     conditions.push(`r.status = $${idx++}`);
     params.push(filters.status);
+  }
+  if (filters?.local_id) {
+    conditions.push(`(r.origem_id = $${idx} OR r.destino_id = $${idx})`);
+    params.push(filters.local_id);
+    idx++;
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -172,15 +178,16 @@ export async function getRemessasPendentesVoltaReceber(localId: string): Promise
   );
 }
 
-export async function getRemessaKPIs(): Promise<RemessaKPIData> {
+export async function getRemessaKPIs(localId?: string): Promise<RemessaKPIData> {
   const rows = await sql<{ status: string; cnt: string; enviadas: string; recebidas: string }>(
     `SELECT status,
             COUNT(*)::text AS cnt,
             COALESCE(SUM(quantidade_enviada), 0)::text AS enviadas,
             COALESCE(SUM(COALESCE(qty_volta_recebida, quantidade_recebida, 0)), 0)::text AS recebidas
      FROM bag_remessas
+     ${localId ? 'WHERE origem_id = $1 OR destino_id = $1' : ''}
      GROUP BY status`,
-    []
+    localId ? [localId] : []
   );
 
   let total = 0, idaTransito = 0, voltaTransito = 0, concluidas = 0, divergencia = 0;
@@ -209,4 +216,98 @@ export async function getRemessaKPIs(): Promise<RemessaKPIData> {
     bags_recebidas: bagsRecebidas,
     bags_perdidas: bagsEnviadas - bagsRecebidas,
   };
+}
+
+interface BagUnitSummaryRow {
+  id: string;
+  centro: number | null;
+  nome: string;
+  tipo: BagUnitSummary['tipo'];
+  destinadas: string;
+  disponiveis: string;
+  em_uso: string;
+  devolvidas: string;
+  ultima_movimentacao: string | null;
+  remessas_atrasadas: string;
+}
+
+export async function getBagUnitSummaries(localId?: string): Promise<BagUnitSummary[]> {
+  const rows = await sql<BagUnitSummaryRow>(
+    `WITH remessas AS (
+       SELECT destino_id AS local_id,
+              SUM(quantidade_enviada)::text AS destinadas,
+              SUM(COALESCE(qty_volta_recebida, 0))::text AS devolvidas,
+              MAX(GREATEST(
+                enviado_em,
+                COALESCE(recebido_em, enviado_em),
+                COALESCE(volta_enviado_em, enviado_em),
+                COALESCE(volta_recebido_em, enviado_em)
+              ))::text AS ultima_movimentacao,
+              COUNT(*) FILTER (
+                WHERE status <> 'concluida'
+                  AND enviado_em < now() - INTERVAL '7 days'
+              )::text AS remessas_atrasadas
+       FROM bag_remessas
+       GROUP BY destino_id
+     ), bag_status AS (
+       SELECT local_atual_id AS local_id,
+              COUNT(*) FILTER (WHERE status = 'disponivel')::text AS disponiveis,
+              COUNT(*) FILTER (WHERE status IN ('em_uso', 'em_transito'))::text AS em_uso,
+              MAX(data_ultima_movimentacao)::text AS ultima_movimentacao
+       FROM bags
+       WHERE ativo = TRUE AND local_atual_id IS NOT NULL
+       GROUP BY local_atual_id
+     )
+     SELECT l.id, l.centro, l.nome, l.tipo,
+            COALESCE(r.destinadas, '0') AS destinadas,
+            COALESCE(b.disponiveis, '0') AS disponiveis,
+            COALESCE(b.em_uso, '0') AS em_uso,
+            COALESCE(r.devolvidas, '0') AS devolvidas,
+            CASE
+              WHEN r.ultima_movimentacao IS NULL THEN b.ultima_movimentacao
+              WHEN b.ultima_movimentacao IS NULL THEN r.ultima_movimentacao
+              ELSE GREATEST(r.ultima_movimentacao::timestamptz, b.ultima_movimentacao::timestamptz)::text
+            END AS ultima_movimentacao,
+            COALESCE(r.remessas_atrasadas, '0') AS remessas_atrasadas
+     FROM locais l
+     LEFT JOIN remessas r ON r.local_id = l.id
+     LEFT JOIN bag_status b ON b.local_id = l.id
+     WHERE l.ativo = TRUE
+       AND l.tipo IN ('loja', 'farma', 'cd')
+       ${localId ? 'AND l.id = $1' : ''}
+       AND (${localId ? 'TRUE' : "COALESCE(r.destinadas, '0')::integer > 0 OR COALESCE(b.disponiveis, '0')::integer > 0 OR COALESCE(b.em_uso, '0')::integer > 0"})
+     ORDER BY COALESCE(r.remessas_atrasadas, '0')::integer DESC,
+              (COALESCE(r.destinadas, '0')::integer - COALESCE(r.devolvidas, '0')::integer) DESC,
+              l.nome`,
+    localId ? [localId] : []
+  );
+
+  return rows.map((row) => {
+    const destinadas = Number(row.destinadas);
+    const devolvidas = Number(row.devolvidas);
+    const pendentes = Math.max(destinadas - devolvidas, 0);
+    const percentual = destinadas > 0 ? Math.min(Math.round((devolvidas / destinadas) * 100), 100) : 100;
+    const atrasadas = Number(row.remessas_atrasadas);
+    const situacao: BagUnitSummary['situacao'] = atrasadas > 0 || (pendentes > 0 && percentual < 75)
+      ? 'critica'
+      : pendentes > 0 || percentual < 90
+        ? 'atencao'
+        : 'regular';
+
+    return {
+      id: row.id,
+      centro: row.centro,
+      nome: row.nome,
+      tipo: row.tipo,
+      destinadas,
+      disponiveis: Number(row.disponiveis),
+      em_uso: Number(row.em_uso),
+      devolvidas,
+      pendentes,
+      percentual_devolucao: percentual,
+      ultima_movimentacao: row.ultima_movimentacao,
+      remessas_atrasadas: atrasadas,
+      situacao,
+    };
+  });
 }

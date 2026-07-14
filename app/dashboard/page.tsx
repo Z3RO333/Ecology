@@ -7,6 +7,8 @@ import { MaterialPieChart } from '@/components/dashboard/MaterialPieChart';
 import { SectorRanking } from '@/components/dashboard/SectorRanking';
 import { DashboardFilters } from '@/components/dashboard/DashboardFilters';
 import { getKPIs, getByPeriod, getByMaterial, getBySector } from '@/lib/databricks';
+import { getBagUnitSummaries } from '@/lib/bag-remessas';
+import { BagUnitOverview } from '@/components/dashboard/BagUnitOverview';
 import { DEFAULT_DATE_FROM, DEFAULT_DATE_TO } from '@/lib/constants';
 import type { PeriodView } from '@/types';
 import { BarChart3, Sparkles } from 'lucide-react';
@@ -29,11 +31,12 @@ async function DashboardContent({ searchParams }: PageProps) {
   const materials = sp.material ? [sp.material] : [];
   const view = (sp.view ?? 'weekly') as PeriodView;
 
-  const [kpis, byPeriod, byMaterial, bySector] = await Promise.all([
+  const [kpis, byPeriod, byMaterial, bySector, bagUnits] = await Promise.all([
     getKPIs(dateFrom, dateTo, sectors, materials),
     getByPeriod(dateFrom, dateTo, view, sectors, materials),
     getByMaterial(dateFrom, dateTo, sectors, materials),
     getBySector(dateFrom, dateTo, sectors, materials),
+    getBagUnitSummaries(),
   ]);
 
   return (
@@ -44,13 +47,16 @@ async function DashboardContent({ searchParams }: PageProps) {
         <MaterialPieChart data={byMaterial} />
       </div>
       <SectorRanking data={bySector} />
+      <div className="pt-3">
+        <BagUnitOverview units={bagUnits} />
+      </div>
     </div>
   );
 }
 
 export default async function DashboardPage({ searchParams }: PageProps) {
   const session = await auth();
-  if (session?.user?.role === 'operational') {
+  if (session?.user?.role === 'operational' || session?.user?.role === 'manager') {
     redirect('/dashboard/bags');
   }
 

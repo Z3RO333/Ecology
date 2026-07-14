@@ -5,13 +5,12 @@ import { hasPermission } from '@/lib/access-control';
 import { listInternalUsers } from '@/lib/internal-users';
 import { getLocais } from '@/lib/locations';
 import { listSuppliers, listAllowedEmails } from '@/lib/suppliers';
-import { createUserAction, resetPasswordAction, toggleUserActiveAction } from '@/actions/user-admin';
+import { UserAdminPanel } from '@/components/dashboard/UserAdminPanel';
+import { ShieldCheck } from 'lucide-react';
 
 async function UsersContent() {
   const session = await auth();
-  if (!session?.user || !hasPermission(session.user.role, 'users:manage')) {
-    redirect('/dashboard');
-  }
+  if (!session?.user || !hasPermission(session.user.role, 'users:manage')) redirect('/dashboard');
 
   const [users, locais, suppliers, allowedEmails] = await Promise.all([
     listInternalUsers(),
@@ -20,189 +19,30 @@ async function UsersContent() {
     listAllowedEmails(),
   ]);
 
-  const supplierNameById = new Map(suppliers.map((s) => [s.id, s.legal_name]));
+  const supplierNameById = new Map(suppliers.map((supplier) => [supplier.id, supplier.legal_name]));
+  const supplierUsers = allowedEmails.map((entry) => ({
+    email: entry.email,
+    supplierName: supplierNameById.get(entry.supplier_id) ?? 'Fornecedor não identificado',
+    hasPassword: entry.has_password,
+  }));
 
-  return (
-    <div className="space-y-6">
-      {/* Create user form */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-800 mb-4">Novo usuario</h2>
-        <form action={async (formData: FormData) => {
-          'use server';
-          await createUserAction({ success: false }, formData);
-        }} className="grid grid-cols-4 gap-3 items-end">
-          <div>
-            <label htmlFor="display_name" className="block text-xs font-medium text-gray-500 mb-1">Nome</label>
-            <input
-              id="display_name"
-              name="display_name"
-              required
-              placeholder="Nome completo"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-green-500"
-            />
-          </div>
-          <div>
-            <label htmlFor="user_email" className="block text-xs font-medium text-gray-500 mb-1">E-mail</label>
-            <input
-              id="user_email"
-              name="email"
-              type="email"
-              required
-              placeholder="email@bemol.com.br"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-green-500"
-            />
-          </div>
-          <div>
-            <label htmlFor="user_role" className="block text-xs font-medium text-gray-500 mb-1">Perfil</label>
-            <select
-              id="user_role"
-              name="role"
-              required
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-green-500"
-            >
-              <option value="operational">Operacional</option>
-              <option value="manager">Gestor</option>
-              <option value="admin">Administrador</option>
-            </select>
-          </div>
-          <button
-            type="submit"
-            className="bg-green-600 text-white rounded-lg px-4 py-2 text-sm font-bold hover:bg-green-700"
-          >
-            Cadastrar
-          </button>
-        </form>
-        <p className="text-xs text-gray-400 mt-2">
-          Senha temporaria: <strong>Bemol@2026</strong> — o usuario sera obrigado a trocar no primeiro acesso.
-        </p>
-      </div>
-
-      {/* Users table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-gray-500">
-            <tr>
-              <th className="px-4 py-3 font-medium">Nome</th>
-              <th className="px-4 py-3 font-medium">E-mail</th>
-              <th className="px-4 py-3 font-medium">Perfil</th>
-              <th className="px-4 py-3 font-medium">Unidade</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Primeiro Acesso</th>
-              <th className="px-4 py-3 font-medium">Acoes</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {users.map((u) => (
-              <tr key={u.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium">{u.display_name ?? '—'}</td>
-                <td className="px-4 py-3 text-gray-600">{u.email}</td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    u.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                    u.role === 'manager' ? 'bg-blue-100 text-blue-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {u.role === 'admin' ? 'Admin' : u.role === 'manager' ? 'Gestor' : 'Operacional'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-gray-600">{u.local_nome ?? '—'}</td>
-                <td className="px-4 py-3">
-                  {u.active ? (
-                    <span className="text-green-600 font-semibold">Ativo</span>
-                  ) : (
-                    <span className="text-red-600 font-semibold">Inativo</span>
-                  )}
-                  {u.must_change_password && u.active && (
-                    <span className="ml-2 text-amber-600 text-xs">(senha temp.)</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-gray-500 text-xs">
-                  {u.first_access_at
-                    ? new Date(u.first_access_at).toLocaleString('pt-BR')
-                    : 'Nunca acessou'}
-                </td>
-                <td className="px-4 py-3 space-x-2">
-                  <form action={async (formData: FormData) => {
-                    'use server';
-                    await resetPasswordAction(formData);
-                  }} className="inline">
-                    <input type="hidden" name="user_id" value={u.id} />
-                    <button type="submit" className="text-xs text-amber-600 hover:text-amber-800 font-medium">
-                      Resetar senha
-                    </button>
-                  </form>
-                  <form action={async (formData: FormData) => {
-                    'use server';
-                    await toggleUserActiveAction(formData);
-                  }} className="inline">
-                    <input type="hidden" name="user_id" value={u.id} />
-                    <input type="hidden" name="active" value={u.active ? 'false' : 'true'} />
-                    <button type="submit" className={`text-xs font-medium ${u.active ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'}`}>
-                      {u.active ? 'Desativar' : 'Ativar'}
-                    </button>
-                  </form>
-                </td>
-              </tr>
-            ))}
-            {!users.length && (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
-                  Nenhum usuario cadastrado.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Supplier users table */}
-      <div>
-        <h2 className="font-semibold text-gray-800 mb-3">Usuarios de fornecedores</h2>
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-gray-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">Fornecedor</th>
-                <th className="px-4 py-3 font-medium">E-mail</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {allowedEmails.map((e) => (
-                <tr key={e.email} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{supplierNameById.get(e.supplier_id) ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{e.email}</td>
-                  <td className="px-4 py-3">
-                    {e.has_password ? (
-                      <span className="text-green-600 font-semibold">Acesso ativo</span>
-                    ) : (
-                      <span className="text-amber-600 font-semibold">Aguardando ativacao</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {!allowedEmails.length && (
-                <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
-                    Nenhum usuario de fornecedor cadastrado.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
+  return <UserAdminPanel users={users} locais={locais} supplierUsers={supplierUsers} />;
 }
 
 export default function UsuariosPage() {
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-gray-900">Gerenciar Usuarios</h1>
-      <Suspense
-        fallback={<div className="text-center py-12 text-gray-400 text-sm">Carregando...</div>}
-      >
+    <div className="space-y-6">
+      <header className="flex items-start gap-3.5">
+        <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700">
+          <ShieldCheck className="h-5 w-5" />
+        </span>
+        <div>
+          <p className="mb-1 text-xs font-bold uppercase tracking-[0.14em] text-indigo-700">Controle de acesso</p>
+          <h1 className="text-2xl font-bold tracking-[-0.025em] text-slate-950 sm:text-[28px]">Usuários e permissões</h1>
+          <p className="mt-1 text-sm text-slate-500">Defina perfis, unidades responsáveis e o status de acesso de cada pessoa.</p>
+        </div>
+      </header>
+      <Suspense fallback={<div className="skeleton-shimmer h-96 rounded-3xl" />}>
         <UsersContent />
       </Suspense>
     </div>

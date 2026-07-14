@@ -1,14 +1,21 @@
 'use server';
 
-import { criarRemessa, receberIda, enviarVolta, receberVolta } from '@/lib/bag-remessas';
+import { criarRemessa, receberIda, enviarVolta, receberVolta, getRemessaById } from '@/lib/bag-remessas';
 import { getLocalById } from '@/lib/locations';
 import { canSubmitTabletRecord } from '@/lib/tablet-access';
+import { auth } from '@/lib/auth';
+import { canAccessUnit } from '@/lib/access-control';
 import { sendRemessaEnviadaEmail, sendRemessaRecebidaEmail, sendDevolucaoEnviadaEmail, sendVoltaRecebidaEmail } from '@/lib/bag-email';
 
 interface ActionResult {
   success: boolean;
   error?: string;
   remessa_id?: string;
+}
+
+async function canOperateUnit(localId: string): Promise<boolean> {
+  const session = await auth();
+  return !session?.user || canAccessUnit(session.user.role, session.user.localId, localId);
 }
 
 export async function enviarBagsAction(
@@ -29,6 +36,7 @@ export async function enviarBagsAction(
   if (origemId === destinoId) return { success: false, error: 'Origem e destino devem ser diferentes.' };
   if (!quantidade || quantidade < 1) return { success: false, error: 'Informe uma quantidade valida.' };
   if (!responsavel || responsavel.length < 2) return { success: false, error: 'Informe o responsavel.' };
+  if (!(await canOperateUnit(origemId))) return { success: false, error: 'Você só pode operar a unidade vinculada ao seu perfil.' };
 
   try {
     const remessa = await criarRemessa({
@@ -68,6 +76,10 @@ export async function receberIdaAction(
   if (!responsavel || responsavel.length < 2) return { success: false, error: 'Informe o responsavel.' };
 
   try {
+    const pendingRemessa = await getRemessaById(remessaId);
+    if (!pendingRemessa || !(await canOperateUnit(pendingRemessa.destino_id))) {
+      return { success: false, error: 'Remessa indisponível para a sua unidade.' };
+    }
     const remessa = await receberIda({
       remessa_id: remessaId, quantidade_recebida: quantidade,
       recebido_por: responsavel, observacao_recebimento: observacao,
@@ -108,6 +120,10 @@ export async function enviarVoltaAction(
   if (!responsavel || responsavel.length < 2) return { success: false, error: 'Informe o responsavel.' };
 
   try {
+    const pendingRemessa = await getRemessaById(remessaId);
+    if (!pendingRemessa || !(await canOperateUnit(pendingRemessa.destino_id))) {
+      return { success: false, error: 'Remessa indisponível para a sua unidade.' };
+    }
     const remessa = await enviarVolta({
       remessa_id: remessaId, qty_volta_enviada: quantidade,
       volta_enviado_por: responsavel, observacao_volta_envio: observacao,
@@ -148,6 +164,10 @@ export async function receberVoltaAction(
   if (!responsavel || responsavel.length < 2) return { success: false, error: 'Informe o responsavel.' };
 
   try {
+    const pendingRemessa = await getRemessaById(remessaId);
+    if (!pendingRemessa || !(await canOperateUnit(pendingRemessa.origem_id))) {
+      return { success: false, error: 'Remessa indisponível para a sua unidade.' };
+    }
     const remessa = await receberVolta({
       remessa_id: remessaId, qty_volta_recebida: quantidade,
       volta_recebido_por: responsavel, observacao_volta_recebimento: observacao,

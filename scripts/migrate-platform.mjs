@@ -1,6 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import process from 'node:process';
+import nextEnv from '@next/env';
 import pg from 'pg';
+
+const { loadEnvConfig } = nextEnv;
+loadEnvConfig(process.cwd());
 
 const configuredConnectionString = process.env.DATABASE_URL;
 if (!configuredConnectionString) {
@@ -19,6 +23,7 @@ const migrationPaths = [
   new URL('../docs/sql/006_locais_email_binding.sql', import.meta.url),
   new URL('../docs/sql/007_internal_user_passwords.sql', import.meta.url),
   new URL('../docs/sql/008_remessa_ciclo.sql', import.meta.url),
+  new URL('../docs/sql/009_user_access_profiles.sql', import.meta.url),
 ];
 const client = new pg.Client({
   connectionString: databaseUrl.toString(),

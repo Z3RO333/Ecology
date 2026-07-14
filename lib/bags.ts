@@ -149,12 +149,12 @@ export async function registrarMovimentacao(input: CreateMovimentacaoInput): Pro
   });
 }
 
-export async function getBagKPIs(): Promise<BagKPIData> {
+export async function getBagKPIs(localId?: string): Promise<BagKPIData> {
   const rows = await sql<{ status: BagStatus; count: string }>(
     `SELECT status, COUNT(*)::text AS count
-     FROM bags WHERE ativo = TRUE
+     FROM bags WHERE ativo = TRUE ${localId ? 'AND local_atual_id = $1' : ''}
      GROUP BY status`,
-    []
+    localId ? [localId] : []
   );
 
   const counts: Record<string, number> = {};
@@ -176,6 +176,7 @@ export async function getBagKPIs(): Promise<BagKPIData> {
 
 export async function getMovimentacoes(filters: {
   bag_id?: string;
+  local_id?: string;
   limit?: number;
   offset?: number;
 }): Promise<BagMovimentacao[]> {
@@ -186,6 +187,11 @@ export async function getMovimentacoes(filters: {
   if (filters.bag_id) {
     conditions.push(`m.bag_id = $${idx++}`);
     params.push(filters.bag_id);
+  }
+  if (filters.local_id) {
+    conditions.push(`(m.local_origem_id = $${idx} OR m.local_destino_id = $${idx})`);
+    params.push(filters.local_id);
+    idx++;
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';

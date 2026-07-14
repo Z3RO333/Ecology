@@ -11,7 +11,8 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = req.nextUrl;
-  const email = searchParams.get('email');
+  const requestedEmail = searchParams.get('email');
+  const email = session?.user?.role === 'manager' ? session.user.email : requestedEmail;
 
   try {
     if (email) {

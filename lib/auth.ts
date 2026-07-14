@@ -5,7 +5,7 @@ import { APP_ROLES, type AppRole } from '@/lib/access-control';
 import { resolveJwtRole } from '@/lib/auth-role';
 import { resolveInternalRole } from '@/lib/internal-roles';
 import { verifySupplierPassword } from '@/lib/suppliers';
-import { verifyInternalPassword } from '@/lib/internal-users';
+import { getInternalUserByEmail, verifyInternalPassword } from '@/lib/internal-users';
 
 const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN?.toLowerCase();
 const EXPECTED_TENANT_ID = process.env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID;
@@ -65,7 +65,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: '/auth/signin',
   },
   callbacks: {
-    signIn({ account, profile }) {
+    async signIn({ account, profile }) {
       if (account?.provider === 'supplier-password') return true;
       if (account?.provider === 'internal-password') return true;
 
@@ -76,9 +76,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const email = entraProfile?.email?.toLowerCase();
       if (!email) return false;
       if (ALLOWED_DOMAIN && !email.endsWith(`@${ALLOWED_DOMAIN}`)) return false;
+      const registeredUser = await getInternalUserByEmail(email);
+      if (registeredUser) return registeredUser.active;
       return resolveInternalRole(email) !== null;
     },
-    jwt({ token, user, profile }) {
+    async jwt({ token, user, profile }) {
       const credentialsUser = user as {
         id?: string;
         role?: AppRole;
@@ -91,19 +93,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.sub = credentialsUser.id;
       }
 
-      token.role = resolveJwtRole({
-        currentRole: isAppRole(token.role) ? token.role : undefined,
-        credentialsRole: credentialsUser?.role,
-        entraEmail: (profile as EntraProfile | undefined)?.email,
-      });
+      const email = String(token.email ?? (profile as EntraProfile | undefined)?.email ?? '').toLowerCase();
+      const isSupplier = credentialsUser?.role === 'supplier' || token.role === 'supplier';
+      const registeredUser = email && !isSupplier ? await getInternalUserByEmail(email) : null;
+
+      if (registeredUser) {
+        token.role = registeredUser.active ? registeredUser.role : undefined;
+        token.localId = registeredUser.active ? registeredUser.local_id ?? undefined : undefined;
+        token.mustChangePassword = registeredUser.active ? registeredUser.must_change_password : undefined;
+      } else {
+        token.role = resolveJwtRole({
+          currentRole: isAppRole(token.role) ? token.role : undefined,
+          credentialsRole: credentialsUser?.role,
+          entraEmail: (profile as EntraProfile | undefined)?.email,
+        });
+      }
 
       if (credentialsUser?.role) {
         token.supplierId = credentialsUser.supplierId;
       }
-      if (credentialsUser?.mustChangePassword !== undefined) {
+      if (!registeredUser && credentialsUser?.mustChangePassword !== undefined) {
         token.mustChangePassword = credentialsUser.mustChangePassword;
       }
-      if (credentialsUser?.localId) {
+      if (!registeredUser && credentialsUser?.localId) {
         token.localId = credentialsUser.localId;
       }
       return token;

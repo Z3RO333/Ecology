@@ -4,6 +4,7 @@ const INTERNAL_ROLE_ENV: Array<[AppRole, string]> = [
   ['admin', 'APP_ADMIN_EMAILS'],
   ['manager', 'APP_MANAGER_EMAILS'],
   ['operational', 'APP_OPERATIONAL_EMAILS'],
+  ['viewer', 'APP_VIEWER_EMAILS'],
 ];
 
 function emailList(name: string): Set<string> {
@@ -27,4 +28,3 @@ export function resolveInternalRole(email: string): AppRole | null {
   // list exists, an unlisted internal user is denied.
   return configuredRoles.some(([, emails]) => emails.size > 0) ? null : 'manager';
 }
-

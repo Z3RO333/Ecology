@@ -1,31 +1,12 @@
 import { Suspense } from 'react';
 import { auth } from '@/lib/auth';
-import { getRemessaKPIs, getRemessas } from '@/lib/bag-remessas';
+import { hasPermission } from '@/lib/access-control';
+import { getBagUnitSummaries, getRemessas } from '@/lib/bag-remessas';
 import { REMESSA_STATUS_LABELS } from '@/types/bags';
-import type { RemessaKPIData, BagRemessa } from '@/types/bags';
+import type { BagRemessa } from '@/types/bags';
 import Link from 'next/link';
-
-function KPICards({ kpis }: { kpis: RemessaKPIData }) {
-  const cards = [
-    { label: 'Ida - Em Transito', value: kpis.em_transito_ida, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { label: 'Volta - Em Transito', value: kpis.em_transito_volta, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Concluidas', value: kpis.concluidas, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Com Divergencia', value: kpis.com_divergencia, color: 'text-red-600', bg: 'bg-red-50' },
-    { label: 'Bags Enviadas', value: kpis.bags_enviadas, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Bags Perdidas', value: kpis.bags_perdidas, color: kpis.bags_perdidas > 0 ? 'text-red-600' : 'text-gray-400', bg: kpis.bags_perdidas > 0 ? 'bg-red-50' : 'bg-gray-50' },
-  ];
-
-  return (
-    <div className="grid grid-cols-3 gap-4">
-      {cards.map(({ label, value, color, bg }) => (
-        <div key={label} className={`${bg} rounded-xl border border-gray-100 p-4`}>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
-          <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
+import { BagUnitOverview } from '@/components/dashboard/BagUnitOverview';
+import { AlertTriangle, PackageOpen } from 'lucide-react';
 
 function TimelineStep({ done, active, color, label, detail }: {
   done: boolean; active: boolean; color: string; label: string; detail: string;
@@ -120,35 +101,44 @@ function RemessaCard({ r }: { r: BagRemessa }) {
 
 async function BagsContent() {
   const session = await auth();
-  const isAdmin = session?.user?.role === 'admin' || session?.user?.role === 'manager';
+  const role = session?.user?.role;
+  const scopedLocalId = role === 'manager' ? session?.user?.localId : undefined;
+  const canCreate = hasPermission(role, 'bags:create');
+  const canManage = hasPermission(role, 'bags:manage');
 
-  const [kpis, remessas] = await Promise.all([
-    getRemessaKPIs(),
-    getRemessas({ limit: 30 }),
+  if (role === 'manager' && !scopedLocalId) {
+    return <div className="rounded-3xl border border-amber-200 bg-amber-50 p-8 text-center"><AlertTriangle className="mx-auto h-9 w-9 text-amber-600" /><h2 className="mt-3 text-lg font-bold text-amber-900">Unidade não vinculada</h2><p className="mt-1 text-sm text-amber-800">Peça ao administrador para vincular uma unidade ao seu perfil de Gerente de Loja.</p></div>;
+  }
+
+  const [unitSummaries, remessas] = await Promise.all([
+    getBagUnitSummaries(scopedLocalId),
+    getRemessas({ local_id: scopedLocalId, limit: 30 }),
   ]);
 
   return (
     <div className="space-y-6">
-      <KPICards kpis={kpis} />
+      <BagUnitOverview units={unitSummaries} scoped={Boolean(scopedLocalId)} />
 
-      <div className={`grid gap-4 ${isAdmin ? 'grid-cols-4' : 'grid-cols-2'}`}>
+      {(canCreate || canManage) && <div className={`grid gap-4 ${canManage ? 'sm:grid-cols-4' : 'sm:grid-cols-2'}`}>
+        {canCreate && (
         <Link href="/tablet/bags/enviar" className="flex items-center gap-2 bg-orange-500 text-white rounded-xl p-4 font-bold hover:bg-orange-600 transition-colors text-sm">
           <span className="text-xl">&#128230;</span>1. Enviar
         </Link>
-        {isAdmin && (
+        )}
+        {canManage && (
           <Link href="/tablet/bags/receber" className="flex items-center gap-2 bg-green-500 text-white rounded-xl p-4 font-bold hover:bg-green-600 transition-colors text-sm">
             <span className="text-xl">&#9989;</span>2. Receber
           </Link>
         )}
-        {isAdmin && (
+        {canManage && (
           <Link href="/tablet/bags/devolver" className="flex items-center gap-2 bg-purple-500 text-white rounded-xl p-4 font-bold hover:bg-purple-600 transition-colors text-sm">
             <span className="text-xl">&#128257;</span>3. Devolver
           </Link>
         )}
-        <Link href="/tablet/bags/receber-volta" className="flex items-center gap-2 bg-teal-500 text-white rounded-xl p-4 font-bold hover:bg-teal-600 transition-colors text-sm">
+        {canCreate && <Link href="/tablet/bags/receber-volta" className="flex items-center gap-2 bg-teal-500 text-white rounded-xl p-4 font-bold hover:bg-teal-600 transition-colors text-sm">
           <span className="text-xl">&#127919;</span>4. Receber Volta
-        </Link>
-      </div>
+        </Link>}
+      </div>}
 
       <div>
         <h2 className="font-semibold text-gray-800 mb-4">Historico de Remessas</h2>
@@ -166,8 +156,8 @@ async function BagsContent() {
 
 export default function DashboardBagsPage() {
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-gray-900">Painel de Bags</h1>
+    <div className="space-y-6">
+      <header className="flex items-start gap-3.5"><span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-blue-700"><PackageOpen className="h-5 w-5" /></span><div><p className="mb-1 text-xs font-bold uppercase tracking-[0.14em] text-blue-700">Rastreabilidade</p><h1 className="text-2xl font-bold tracking-[-0.025em] text-slate-950 sm:text-[28px]">Painel de bags</h1><p className="mt-1 text-sm text-slate-500">Acompanhe a distribuição e o ciclo de devolução por unidade.</p></div></header>
       <Suspense fallback={<div className="text-center py-12 text-gray-400 text-sm">Carregando dados...</div>}>
         <BagsContent />
       </Suspense>

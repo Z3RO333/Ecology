@@ -25,9 +25,12 @@ export async function getLocalById(id: string): Promise<LocalWithCentro | null> 
 export async function getLocalByEmail(email: string): Promise<LocalWithCentro | null> {
   return sqlOne<LocalWithCentro>(
     `SELECT l.id, l.centro, l.nome, l.tipo, l.ativo
-     FROM local_emails le
-     JOIN locais l ON l.id = le.local_id
-     WHERE le.email = $1 AND l.ativo = TRUE`,
+     FROM locais l
+     WHERE l.id = COALESCE(
+       (SELECT u.local_id FROM app_users u
+        WHERE u.email = $1 AND u.active = TRUE AND u.local_id IS NOT NULL),
+       (SELECT le.local_id FROM local_emails le WHERE le.email = $1)
+     ) AND l.ativo = TRUE`,
     [email.toLowerCase()]
   );
 }
