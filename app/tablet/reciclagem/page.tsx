@@ -1,190 +1,79 @@
-'use client';
-
-import { useState, useActionState, useEffect, useRef, useCallback } from 'react';
-import { createRecord } from '@/actions/records';
-import { MaterialSelector } from '@/components/tablet/MaterialSelector';
-import { WeightInput } from '@/components/tablet/WeightInput';
-import { SectorDropdown } from '@/components/tablet/SectorDropdown';
-import type { Material, Sector } from '@/types';
 import Link from 'next/link';
+import { ArrowRight, Building2, PackageOpen, Recycle } from 'lucide-react';
 
-const INITIAL_STATE = { success: false, error: undefined };
-const IDLE_RESET_MS = 90_000;
+const actions = [
+  {
+    href: '/tablet/reciclagem/cd',
+    eyebrow: 'Formulário',
+    title: 'Centro de Distribuição',
+    description: 'Todos os materiais recicláveis: papel, plástico, metal, vidro e mais.',
+    Icon: PackageOpen,
+    color: 'from-emerald-500 to-green-700',
+  },
+  {
+    href: '/tablet/reciclagem/escritorio',
+    eyebrow: 'Formulário',
+    title: 'Escritório',
+    description: 'Lixo comum e outros materiais gerados nos escritórios.',
+    Icon: Building2,
+    color: 'from-sky-500 to-blue-700',
+  },
+];
 
-type FormMode = 'cd' | 'escritorio';
-
-const MODE_MATERIALS: Record<FormMode, Material[]> = {
-  cd: ['Papel', 'Plástico', 'Metal', 'Vidro', 'Orgânico', 'Eletrônico', 'Lixo Comum', 'Outro'],
-  escritorio: ['Lixo Comum', 'Outro'],
-};
-
-const MODE_SECTORS: Record<FormMode, Sector[]> = {
-  cd: ['Farma', 'Loja', 'Mercado'],
-  escritorio: ['Escritório Central', 'Escritório Anexo'],
-};
-
-export default function ReciclagemPage() {
-  const [mode, setMode] = useState<FormMode>('cd');
-  const [material, setMaterial] = useState<Material | null>(null);
-  const [weight, setWeight] = useState(0);
-  const [sector, setSector] = useState<Sector | ''>('');
-  const [responsible, setResponsible] = useState('');
-  const [notes, setNotes] = useState('');
-  const [showNotes, setShowNotes] = useState(false);
-  const [activity, setActivity] = useState(0);
-
-  const formRef = useRef<HTMLFormElement>(null);
-  const [state, formAction, isPending] = useActionState(createRecord, INITIAL_STATE);
-
-  const resetForm = useCallback(() => {
-    setMaterial(null);
-    setWeight(0);
-    setSector('');
-    setResponsible('');
-    setNotes('');
-    setShowNotes(false);
-    formRef.current?.reset();
-  }, []);
-
-  const changeMode = useCallback((next: FormMode) => {
-    setMode(next);
-    setMaterial(null);
-    setSector('');
-  }, []);
-
-  useEffect(() => {
-    if (!state.success) return;
-    const timer = setTimeout(resetForm, 2000);
-    return () => clearTimeout(timer);
-  }, [state.success, resetForm]);
-
-  const isDirty =
-    material !== null ||
-    weight !== 0 ||
-    sector !== '' ||
-    responsible !== '' ||
-    notes !== '' ||
-    showNotes;
-  useEffect(() => {
-    if (!isDirty || isPending || state.success) return;
-    const timer = setTimeout(resetForm, IDLE_RESET_MS);
-    return () => clearTimeout(timer);
-  }, [isDirty, isPending, state.success, activity, resetForm]);
-
-  const bumpActivity = useCallback(() => setActivity((a) => a + 1), []);
-
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('pt-BR', {
-    weekday: 'long', day: '2-digit', month: 'short', year: 'numeric',
-  });
-  const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
+export default function ReciclagemMenuPage() {
   return (
-    <div className="min-h-screen bg-green-50">
-      <div className="bg-green-600 text-white px-6 py-6 text-center">
-        <h1 className="text-3xl font-bold">Registro de Reciclagem</h1>
-        <p className="text-green-100 text-base mt-1 capitalize">{dateStr} · {timeStr}</p>
-      </div>
-
-      <form
-        ref={formRef}
-        action={formAction}
-        onPointerDown={bumpActivity}
-        onKeyDown={bumpActivity}
-        className="max-w-2xl mx-auto px-5 py-8 space-y-7"
-      >
-        <input type="hidden" name="material_type" value={material ?? ''} />
-
-        <div>
-          <p className="text-lg font-bold text-green-800 mb-3">Formulario</p>
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              type="button"
-              onClick={() => changeMode('cd')}
-              className={`py-5 rounded-2xl text-lg font-semibold transition-all ${
-                mode === 'cd'
-                  ? 'bg-green-600 text-white shadow-md ring-2 ring-green-300'
-                  : 'bg-white border-2 border-gray-200 text-gray-700 active:border-green-400'
-              }`}
-            >
-              {mode === 'cd' ? '✓ ' : ''}Centro de Distribuicao
-            </button>
-            <button
-              type="button"
-              onClick={() => changeMode('escritorio')}
-              className={`py-5 rounded-2xl text-lg font-semibold transition-all ${
-                mode === 'escritorio'
-                  ? 'bg-green-600 text-white shadow-md ring-2 ring-green-300'
-                  : 'bg-white border-2 border-gray-200 text-gray-700 active:border-green-400'
-              }`}
-            >
-              {mode === 'escritorio' ? '✓ ' : ''}Escritorio
-            </button>
+    <main className="relative flex min-h-screen flex-col overflow-hidden bg-[#f3f7f4]">
+      <div className="pointer-events-none absolute -right-20 -top-24 h-80 w-80 rounded-full bg-emerald-200/40 blur-3xl" />
+      <header className="relative border-b border-emerald-950/10 bg-white/82 px-5 py-5 backdrop-blur-xl sm:px-8">
+        <div className="mx-auto flex max-w-4xl items-center gap-3">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-green-700 text-white shadow-lg shadow-emerald-900/15">
+            <Recycle className="h-6 w-6" />
+          </span>
+          <div>
+            <h1 className="text-xl font-bold tracking-[-0.025em] text-slate-950 sm:text-2xl">Registrar reciclagem</h1>
+            <p className="text-xs font-medium text-slate-500 sm:text-sm">Medições</p>
           </div>
         </div>
+      </header>
 
-        <MaterialSelector value={material} onChange={setMaterial} materials={MODE_MATERIALS[mode]} />
-        <SectorDropdown value={sector} onChange={setSector} sectors={MODE_SECTORS[mode]} />
-        <WeightInput value={weight} onChange={setWeight} />
+      <section className="relative flex flex-1 items-center px-5 py-10 sm:px-8">
+        <div className="mx-auto w-full max-w-4xl">
+          <div className="mb-7 text-center sm:text-left">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Qual formulário?</p>
+            <h2 className="mt-2 text-3xl font-bold tracking-[-0.035em] text-slate-950 sm:text-4xl">Escolha o local do registro</h2>
+            <p className="mt-2 text-sm text-slate-500 sm:text-base">Centro de Distribuição ou Escritório.</p>
+          </div>
 
-        <div>
-          <p className="text-lg font-bold text-green-800 mb-3">4. Responsavel *</p>
-          <input
-            name="responsible_name"
-            type="text"
-            value={responsible}
-            onChange={(event) => setResponsible(event.target.value)}
-            placeholder="Nome do colaborador..."
-            className="w-full bg-white border-2 border-gray-200 rounded-2xl p-5 text-gray-700 focus:border-green-500 outline-none text-xl"
-          />
-        </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            {actions.map(({ href, eyebrow, title, description, Icon, color }, index) => (
+              <Link
+                key={href}
+                href={href}
+                className={`group page-enter relative min-h-64 overflow-hidden rounded-[28px] bg-gradient-to-br ${color} p-7 text-white shadow-xl shadow-slate-900/10 transition duration-300 hover:-translate-y-1 hover:shadow-2xl active:scale-[0.98] sm:p-8`}
+                style={{ animationDelay: `${index * 90}ms` }}
+              >
+                <span className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full border-[28px] border-white/8" />
+                <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-white/18 text-white">
+                  <Icon className="h-7 w-7" />
+                </span>
+                <span className="relative mt-8 block text-xs font-bold uppercase tracking-[0.16em] text-white/70">{eyebrow}</span>
+                <span className="relative mt-1.5 block text-2xl font-bold tracking-tight sm:text-3xl">{title}</span>
+                <span className="relative mt-2 block max-w-sm text-sm leading-6 text-white/78 sm:text-base">{description}</span>
+                <span className="absolute bottom-7 right-7 flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-900 shadow-lg transition-transform duration-300 group-hover:translate-x-1">
+                  <ArrowRight className="h-5 w-5" />
+                </span>
+              </Link>
+            ))}
+          </div>
 
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowNotes(!showNotes)}
-            className="text-base text-green-700 underline"
+          <Link
+            href="/tablet"
+            className="mt-7 block text-center text-sm font-semibold text-emerald-700 underline sm:text-left"
           >
-            {showNotes ? 'Ocultar observacoes' : 'Adicionar observacao (opcional)'}
-          </button>
-          {showNotes && (
-            <textarea
-              name="notes"
-              rows={3}
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              placeholder="Observacoes..."
-              className="mt-2 w-full bg-white border-2 border-gray-200 rounded-2xl p-4 text-gray-700 focus:border-green-500 outline-none text-lg resize-none"
-            />
-          )}
+            Voltar ao menu
+          </Link>
         </div>
-
-        {state.error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-lg">
-            {state.error}
-          </div>
-        )}
-        {state.success && (
-          <div className="bg-green-100 border border-green-300 text-green-800 rounded-2xl p-5 text-center text-xl font-semibold">
-            Registro salvo com sucesso!
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={isPending || state.success}
-          className="w-full bg-green-600 active:bg-green-700 disabled:bg-gray-300 text-white font-bold py-7 rounded-2xl text-2xl transition-colors shadow-md"
-        >
-          {isPending ? 'Salvando...' : state.success ? 'Salvo!' : 'Confirmar Registro'}
-        </button>
-
-        <Link
-          href="/tablet"
-          className="block text-center text-green-600 underline text-lg mt-4"
-        >
-          Voltar ao menu
-        </Link>
-      </form>
-    </div>
+      </section>
+    </main>
   );
 }
