@@ -6,14 +6,15 @@ import type { Material } from '@/types';
 interface Props {
   value: Material | null;
   onChange: (m: Material) => void;
+  materials?: readonly Material[];
 }
 
-export function MaterialSelector({ value, onChange }: Props) {
+export function MaterialSelector({ value, onChange, materials = MATERIALS }: Props) {
   return (
     <div>
       <p className="text-lg font-bold text-green-800 mb-3">1. Tipo de Material *</p>
       <div className="grid grid-cols-2 gap-4">
-        {MATERIALS.map((m) => (
+        {materials.map((m) => (
           <button
             key={m}
             type="button"

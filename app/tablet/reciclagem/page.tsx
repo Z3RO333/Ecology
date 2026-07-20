@@ -11,7 +11,20 @@ import Link from 'next/link';
 const INITIAL_STATE = { success: false, error: undefined };
 const IDLE_RESET_MS = 90_000;
 
+type FormMode = 'cd' | 'escritorio';
+
+const MODE_MATERIALS: Record<FormMode, Material[]> = {
+  cd: ['Papel', 'Plástico', 'Metal', 'Vidro', 'Orgânico', 'Eletrônico', 'Lixo Comum', 'Outro'],
+  escritorio: ['Lixo Comum', 'Outro'],
+};
+
+const MODE_SECTORS: Record<FormMode, Sector[]> = {
+  cd: ['Farma', 'Loja', 'Mercado'],
+  escritorio: ['Escritório Central', 'Escritório Anexo'],
+};
+
 export default function ReciclagemPage() {
+  const [mode, setMode] = useState<FormMode>('cd');
   const [material, setMaterial] = useState<Material | null>(null);
   const [weight, setWeight] = useState(0);
   const [sector, setSector] = useState<Sector | ''>('');
@@ -31,6 +44,12 @@ export default function ReciclagemPage() {
     setNotes('');
     setShowNotes(false);
     formRef.current?.reset();
+  }, []);
+
+  const changeMode = useCallback((next: FormMode) => {
+    setMode(next);
+    setMaterial(null);
+    setSector('');
   }, []);
 
   useEffect(() => {
@@ -76,8 +95,36 @@ export default function ReciclagemPage() {
       >
         <input type="hidden" name="material_type" value={material ?? ''} />
 
-        <MaterialSelector value={material} onChange={setMaterial} />
-        <SectorDropdown value={sector} onChange={setSector} />
+        <div>
+          <p className="text-lg font-bold text-green-800 mb-3">Formulario</p>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => changeMode('cd')}
+              className={`py-5 rounded-2xl text-lg font-semibold transition-all ${
+                mode === 'cd'
+                  ? 'bg-green-600 text-white shadow-md ring-2 ring-green-300'
+                  : 'bg-white border-2 border-gray-200 text-gray-700 active:border-green-400'
+              }`}
+            >
+              {mode === 'cd' ? '✓ ' : ''}Centro de Distribuicao
+            </button>
+            <button
+              type="button"
+              onClick={() => changeMode('escritorio')}
+              className={`py-5 rounded-2xl text-lg font-semibold transition-all ${
+                mode === 'escritorio'
+                  ? 'bg-green-600 text-white shadow-md ring-2 ring-green-300'
+                  : 'bg-white border-2 border-gray-200 text-gray-700 active:border-green-400'
+              }`}
+            >
+              {mode === 'escritorio' ? '✓ ' : ''}Escritorio
+            </button>
+          </div>
+        </div>
+
+        <MaterialSelector value={material} onChange={setMaterial} materials={MODE_MATERIALS[mode]} />
+        <SectorDropdown value={sector} onChange={setSector} sectors={MODE_SECTORS[mode]} />
         <WeightInput value={weight} onChange={setWeight} />
 
         <div>
