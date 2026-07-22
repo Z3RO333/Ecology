@@ -1,5 +1,7 @@
 import Link from 'next/link';
-import { ArrowRight, Leaf, PackageOpen, Recycle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Leaf, PackageOpen, Recycle } from 'lucide-react';
+import { auth } from '@/lib/auth';
+import { hasPermission } from '@/lib/access-control';
 
 const actions = [
   {
@@ -22,19 +24,33 @@ const actions = [
   },
 ];
 
-export default function TabletHomePage() {
+export default async function TabletHomePage() {
+  const session = await auth();
+  const canReturnToDashboard = hasPermission(session?.user?.role, 'dashboard:view');
+
   return (
     <main className="relative flex min-h-screen flex-col overflow-hidden bg-[#f3f7f4]">
       <div className="pointer-events-none absolute -right-20 -top-24 h-80 w-80 rounded-full bg-emerald-200/40 blur-3xl" />
       <header className="relative border-b border-emerald-950/10 bg-white/82 px-5 py-5 backdrop-blur-xl sm:px-8">
-        <div className="mx-auto flex max-w-4xl items-center gap-3">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-green-700 text-white shadow-lg shadow-emerald-900/15">
-            <Leaf className="h-6 w-6" />
-          </span>
-          <div>
-            <h1 className="text-xl font-bold tracking-[-0.025em] text-slate-950 sm:text-2xl">EcoTracker</h1>
-            <p className="text-xs font-medium text-slate-500 sm:text-sm">Operações ambientais</p>
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-green-700 text-white shadow-lg shadow-emerald-900/15">
+              <Leaf className="h-6 w-6" />
+            </span>
+            <div>
+              <h1 className="text-xl font-bold tracking-[-0.025em] text-slate-950 sm:text-2xl">EcoTracker</h1>
+              <p className="text-xs font-medium text-slate-500 sm:text-sm">Operações ambientais</p>
+            </div>
           </div>
+          {canReturnToDashboard && (
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Painel
+            </Link>
+          )}
         </div>
       </header>
 
