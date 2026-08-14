@@ -46,19 +46,29 @@ interface ApiResponse {
 }
 
 async function api(path: string, init?: RequestInit): Promise<ApiResponse> {
-  const res = await fetch(`https://${host()}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${process.env.DATABRICKS_TOKEN!}`,
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    cache: 'no-store',
-  });
-  if (!res.ok) {
+  const maxRetries = 3;
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`https://${host()}${path}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${process.env.DATABRICKS_TOKEN!}`,
+        'Content-Type': 'application/json',
+        ...(init?.headers ?? {}),
+      },
+      cache: 'no-store',
+    });
+    if (res.ok) return res.json();
+
+    // The warehouse statement queue can fill up under concurrent load; back off and retry.
+    if (res.status === 429 && attempt < maxRetries) {
+      const retryAfter = Number(res.headers.get('Retry-After'));
+      const delayMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 500 * 2 ** attempt;
+      await new Promise((r) => setTimeout(r, delayMs));
+      continue;
+    }
+
     throw new Error(`Databricks API ${res.status}: ${(await res.text()).slice(0, 300)}`);
   }
-  return res.json();
 }
 
 async function query<T = Record<string, unknown>>(
