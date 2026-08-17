@@ -80,7 +80,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (registeredUser) return registeredUser.active;
       return resolveInternalRole(email) !== null;
     },
-    async jwt({ token, user, profile }) {
+    async jwt({ token, user, account, profile }) {
       const credentialsUser = user as {
         id?: string;
         role?: AppRole;
@@ -92,6 +92,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (credentialsUser?.id) {
         token.sub = credentialsUser.id;
       }
+      if (account?.provider) {
+        token.loginProvider = account.provider;
+      }
 
       const email = String(token.email ?? (profile as EntraProfile | undefined)?.email ?? '').toLowerCase();
       const isSupplier = credentialsUser?.role === 'supplier' || token.role === 'supplier';
@@ -100,7 +103,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (registeredUser) {
         token.role = registeredUser.active ? registeredUser.role : undefined;
         token.localId = registeredUser.active ? registeredUser.local_id ?? undefined : undefined;
-        token.mustChangePassword = registeredUser.active ? registeredUser.must_change_password : undefined;
+        // Only the local-password flow (Credentials "internal-password") ever sets a
+        // password the user must change. Microsoft SSO users never have a local
+        // password, so the flag must never redirect them to /auth/trocar-senha
+        // even if the same email also has an app_users row with the flag set.
+        token.mustChangePassword =
+          token.loginProvider === 'internal-password' && registeredUser.active
+            ? registeredUser.must_change_password
+            : undefined;
       } else {
         token.role = resolveJwtRole({
           currentRole: isAppRole(token.role) ? token.role : undefined,

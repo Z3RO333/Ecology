@@ -18,5 +18,6 @@ declare module 'next-auth/jwt' {
     supplierId?: string;
     mustChangePassword?: boolean;
     localId?: string;
+    loginProvider?: string;
   }
 }
