@@ -210,7 +210,7 @@ export async function getByPeriod(dateFrom: string, dateTo: string, view: Period
     view === 'daily'
       ? `DATE_FORMAT(recorded_date, 'dd/MM')`
       : view === 'weekly'
-      ? `CONCAT('S', WEEKOFYEAR(recorded_date))`
+      ? `CONCAT(DATE_FORMAT(DATE_TRUNC('WEEK', recorded_date), 'dd/MM'), '-', DATE_FORMAT(DATE_ADD(DATE_TRUNC('WEEK', recorded_date), 6), 'dd/MM'))`
       : `DATE_FORMAT(recorded_date, 'MM/yyyy')`;
 
   return query<PeriodData>(

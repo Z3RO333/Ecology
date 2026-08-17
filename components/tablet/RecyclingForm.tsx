@@ -19,7 +19,7 @@ const MODE_MATERIALS: Record<FormMode, Material[]> = {
 };
 
 const MODE_SECTORS: Record<FormMode, Sector[]> = {
-  cd: ['Farma', 'Loja', 'Mercado'],
+  cd: ['Farma', 'Loja', 'Mercado', 'Loja Matriz', 'Mercado Matriz'],
   escritorio: ['Escritório Central', 'Escritório Anexo'],
 };
 

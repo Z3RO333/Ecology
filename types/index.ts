@@ -13,7 +13,9 @@ export type Sector =
   | 'Escritório Anexo'
   | 'Farma'
   | 'Loja'
-  | 'Mercado';
+  | 'Mercado'
+  | 'Loja Matriz'
+  | 'Mercado Matriz';
 
 export interface RecyclingRecord {
   id: string;

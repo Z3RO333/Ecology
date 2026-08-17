@@ -18,6 +18,8 @@ export const SECTORS: Sector[] = [
   'Farma',
   'Loja',
   'Mercado',
+  'Loja Matriz',
+  'Mercado Matriz',
 ];
 
 export const MATERIAL_COLORS: Record<Material, string> = {
