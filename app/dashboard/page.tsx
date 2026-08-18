@@ -6,7 +6,7 @@ import { WeeklyBarChart } from '@/components/dashboard/WeeklyBarChart';
 import { MaterialPieChart } from '@/components/dashboard/MaterialPieChart';
 import { SectorRanking } from '@/components/dashboard/SectorRanking';
 import { DashboardFilters } from '@/components/dashboard/DashboardFilters';
-import { getKPIs, getByPeriod, getByMaterial, getBySector } from '@/lib/databricks';
+import { getKPIs, getByPeriod, getByMaterial, getBySector } from '@/lib/records';
 import { getBagUnitSummaries } from '@/lib/bag-remessas';
 import { BagUnitOverview } from '@/components/dashboard/BagUnitOverview';
 import { DEFAULT_DATE_FROM, DEFAULT_DATE_TO } from '@/lib/constants';

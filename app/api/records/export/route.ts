@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getRecords } from '@/lib/databricks';
+import { getRecords } from '@/lib/records';
 import { DEFAULT_DATE_FROM, DEFAULT_DATE_TO } from '@/lib/constants';
 import { formatRecordDateTime } from '@/lib/format';
 import { hasPermission } from '@/lib/access-control';

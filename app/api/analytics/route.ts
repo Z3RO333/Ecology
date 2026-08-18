@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { hasPermission } from '@/lib/access-control';
-import { getKPIs, getByPeriod, getByMaterial, getBySector } from '@/lib/databricks';
+import { getKPIs, getByPeriod, getByMaterial, getBySector } from '@/lib/records';
 import { DEFAULT_DATE_FROM, DEFAULT_DATE_TO } from '@/lib/constants';
 import type { PeriodView } from '@/types';
 

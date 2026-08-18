@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { RecordsTable } from '@/components/dashboard/RecordsTable';
 import { DashboardFilters } from '@/components/dashboard/DashboardFilters';
-import { getRecords } from '@/lib/databricks';
+import { getRecords } from '@/lib/records';
 import { DEFAULT_DATE_FROM, DEFAULT_DATE_TO } from '@/lib/constants';
 import Link from 'next/link';
 

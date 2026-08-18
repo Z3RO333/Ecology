@@ -1,6 +1,6 @@
 'use server';
 
-import { insertRecord } from '@/lib/databricks';
+import { insertRecord } from '@/lib/records';
 import { MATERIALS, SECTORS } from '@/lib/constants';
 import { canSubmitTabletRecord } from '@/lib/tablet-access';
 import type { Material, Sector } from '@/types';
