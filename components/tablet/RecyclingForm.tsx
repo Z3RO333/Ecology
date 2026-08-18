@@ -39,6 +39,14 @@ export function RecyclingForm({ mode }: { mode: FormMode }) {
 
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, isPending] = useActionState(createRecord, INITIAL_STATE);
+  // useActionState's `state` only changes on the next dispatch, so `state.success`
+  // would otherwise stay true forever after the first successful submit, leaving
+  // the button permanently disabled. Track a resettable local mirror instead.
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    if (state.success) setShowSuccess(true);
+  }, [state]);
 
   const resetForm = useCallback(() => {
     setMaterial(null);
@@ -47,14 +55,15 @@ export function RecyclingForm({ mode }: { mode: FormMode }) {
     setResponsible('');
     setNotes('');
     setShowNotes(false);
+    setShowSuccess(false);
     formRef.current?.reset();
   }, []);
 
   useEffect(() => {
-    if (!state.success) return;
+    if (!showSuccess) return;
     const timer = setTimeout(resetForm, 2000);
     return () => clearTimeout(timer);
-  }, [state.success, resetForm]);
+  }, [showSuccess, resetForm]);
 
   const isDirty =
     material !== null ||
@@ -64,10 +73,10 @@ export function RecyclingForm({ mode }: { mode: FormMode }) {
     notes !== '' ||
     showNotes;
   useEffect(() => {
-    if (!isDirty || isPending || state.success) return;
+    if (!isDirty || isPending || showSuccess) return;
     const timer = setTimeout(resetForm, IDLE_RESET_MS);
     return () => clearTimeout(timer);
-  }, [isDirty, isPending, state.success, activity, resetForm]);
+  }, [isDirty, isPending, showSuccess, activity, resetForm]);
 
   const bumpActivity = useCallback(() => setActivity((a) => a + 1), []);
 
@@ -135,7 +144,7 @@ export function RecyclingForm({ mode }: { mode: FormMode }) {
             {state.error}
           </div>
         )}
-        {state.success && (
+        {showSuccess && (
           <div className="bg-green-100 border border-green-300 text-green-800 rounded-2xl p-5 text-center text-xl font-semibold">
             Registro salvo com sucesso!
           </div>
@@ -143,10 +152,10 @@ export function RecyclingForm({ mode }: { mode: FormMode }) {
 
         <button
           type="submit"
-          disabled={isPending || state.success}
+          disabled={isPending || showSuccess}
           className="w-full bg-green-600 active:bg-green-700 disabled:bg-gray-300 text-white font-bold py-7 rounded-2xl text-2xl transition-colors shadow-md"
         >
-          {isPending ? 'Salvando...' : state.success ? 'Salvo!' : 'Confirmar Registro'}
+          {isPending ? 'Salvando...' : showSuccess ? 'Salvo!' : 'Confirmar Registro'}
         </button>
 
         <Link
